@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="description" content="תרגיל צילום פוטותרפי עם שקפים וירטואליים. כל התוצרים נשארים במכשיר." />
+  <title>שקף צילום</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111827'/%3E%3Cpath d='M14 18h36v28H14z' fill='%23f8fafc'/%3E%3Cpath d='M14 18h36v28H14z' fill='none' stroke='%23000' stroke-width='8'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23111827'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --bg: #f4f1eb;
+      --ink: #111827;
+      --muted: #5b6472;
+      --panel: rgba(255,255,255,.86);
+      --line: #ded8cf;
+      --accent: #7c3aed;
+      --accent-dark: #4c1d95;
+      --danger: #991b1b;
+      --shadow: 0 20px 70px rgba(17,24,39,.14);
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(140deg, rgba(124,58,237,.12), transparent 36%),
+        radial-gradient(circle at 85% 12%, rgba(17,24,39,.09), transparent 28%),
+        var(--bg);
+      min-height: 100%;
+    }
+    button, textarea { font: inherit; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      min-height: 48px;
+      padding: 12px 18px;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .app {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+    .screen {
+      width: min(980px, 100%);
+      display: none;
+      animation: fade .18s ease;
+    }
+    .screen.active { display: block; }
+    @keyframes fade { from { opacity: .5; transform: translateY(4px); } }
+    .hero, .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr .9fr;
+      gap: 28px;
+      padding: clamp(22px, 4vw, 46px);
+      align-items: center;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: clamp(34px, 8vw, 72px); line-height: .95; margin-bottom: 18px; }
+    h2 { font-size: clamp(26px, 5vw, 44px); line-height: 1.05; margin-bottom: 10px; }
+    .lead { color: var(--muted); font-size: clamp(18px, 2.4vw, 22px); line-height: 1.45; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 22px; }
+    .primary { background: var(--ink); color: #fff; }
+    .secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    .privacy {
+      margin-top: 18px;
+      padding: 12px 14px;
+      color: #374151;
+      background: #fff8;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 15px;
+      line-height: 1.4;
+    }
+    .preview-stack {
+      aspect-ratio: 3 / 4;
+      max-height: 520px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: linear-gradient(160deg, #ede9fe, #fff, #d1fae5);
+      position: relative;
+      border: 1px solid var(--line);
+    }
+    .preview-stack:before {
+      content: "";
+      position: absolute;
+      inset: 10%;
+      border: 34px solid #111;
+      border-radius: 12px;
+    }
+    .preview-stack:after {
+      content: "";
+      position: absolute;
+      inset: 40% 16% auto 16%;
+      height: 80px;
+      background: #111;
+      transform: rotate(-10deg);
+      border-radius: 999px;
+    }
+    .prompt-card {
+      padding: clamp(22px, 5vw, 50px);
+      min-height: 430px;
+      display: grid;
+      align-content: center;
+    }
+    .prompt-text {
+      font-size: clamp(28px, 7vw, 64px);
+      line-height: 1.08;
+      font-weight: 900;
+      margin: 0;
+    }
+    .hint { color: var(--muted); line-height: 1.45; }
+    .gallery-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+    .mask-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .mask-card {
+      background: var(--panel);
+      border: 2px solid transparent;
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: 0 10px 26px rgba(17,24,39,.08);
+      text-align: start;
+      color: var(--ink);
+      min-height: auto;
+    }
+    .mask-card:focus-visible { outline: 4px solid rgba(124,58,237,.35); }
+    .mask-card.selected { border-color: var(--accent); }
+    .mask-thumb {
+      aspect-ratio: 4 / 5;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #e5e7eb, #fff);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      margin-bottom: 10px;
+    }
+    .mask-thumb canvas { width: 100%; height: 100%; display: block; }
+    .mask-name { font-size: 16px; font-weight: 800; }
+    .camera-shell {
+      min-height: 100dvh;
+      width: 100vw;
+      margin: -18px;
+      background: #050505;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      color: #fff;
+    }
+    .camera-top, .camera-bottom {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: max(14px, env(safe-area-inset-top)) 14px 14px;
+      z-index: 3;
+    }
+    .camera-bottom { padding: 14px 14px max(18px, env(safe-area-inset-bottom)); justify-content: center; }
+    .camera-top button, .camera-bottom button { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2); }
+    .viewfinder {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background: #111;
+    }
+    video, #cameraOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #cameraOverlay { z-index: 2; pointer-events: none; }
+    .camera-error {
+      z-index: 4;
+      width: min(520px, calc(100% - 32px));
+      background: rgba(255,255,255,.94);
+      color: var(--ink);
+      padding: 18px;
+      border-radius: 8px;
+      display: none;
+      line-height: 1.45;
+    }
+    .shutter {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: #fff;
+      border: 8px solid rgba(255,255,255,.35);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.25);
+      padding: 0;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, .95fr) 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    .result-image {
+      width: 100%;
+      border-radius: var(--radius);
+      background: #111;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+    }
+    .result-panel { padding: clamp(18px, 4vw, 34px); }
+    textarea {
+      width: 100%;
+      min-height: 130px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+      color: var(--ink);
+      line-height: 1.45;
+      font-size: 18px;
+    }
+    .small { font-size: 14px; color: var(--muted); line-height: 1.4; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @media (max-width: 760px) {
+      .app { padding: 12px; place-items: stretch; }
+      .hero, .result-grid { grid-template-columns: 1fr; }
+      .hero { padding: 22px; min-height: calc(100dvh - 24px); align-content: center; }
+      .preview-stack { display: none; }
+      .gallery-head { display: block; }
+      .mask-grid { grid-template-columns: repeat(2, 1fr); }
+      .mask-card { padding: 9px; }
+      .mask-name { font-size: 14px; }
+      .actions button { flex: 1 1 100%; }
+      .result-panel { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="screen active" id="homeScreen" aria-labelledby="homeTitle">
+      <div class="hero">
+        <div>
+          <h1 id="homeTitle">שקף צילום</h1>
+          <p class="lead">תרגיל פוטותרפי קצר: בוחרים שקף שמסתיר חלק מהעולם, מקבלים הנחיה, ויוצרים צילום אחד דרך מה שנשאר גלוי.</p>
+          <div class="privacy">הכול נשאר במכשיר שלך. אין העלאה לשרת, אין חשבון, ואין שמירת תמונות באפליקציה.</div>
+          <div class="actions">
+            <button class="primary" id="startBtn">התחלה</button>
+          </div>
+        </div>
+        <div class="preview-stack" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="screen" id="promptScreen" aria-labelledby="promptTitle">
+      <div class="card prompt-card">
+        <p class="hint" id="promptTitle">הנחיה לצילום</p>
+        <p class="prompt-text" id="promptText"></p>
+        <div class="actions">
+          <button class="primary" id="chooseMaskBtn">בחירת שקף</button>
+          <button class="secondary" id="newPromptBtn">הנחיה אחרת</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="galleryScreen" aria-labelledby="galleryTitle">
+      <div class="gallery-head">
+        <div>
+          <h2 id="galleryTitle">בחרו שקף</h2>
+          <p class="hint">השקף השחור יישאר מעל המצלמה. רק החלקים הבהירים יישארו גלויים בצילום.</p>
+        </div>
+        <button class="ghost" id="backToPromptBtn">חזרה להנחיה</button>
+      </div>
+      <div class="mask-grid" id="maskGrid"></div>
+    </section>
+
+    <section class="screen" id="cameraScreen" aria-label="מצלמה">
+      <div class="camera-shell">
+        <div class="camera-top">
+          <button id="backToGalleryBtn">בחירת שקף</button>
+          <span id="cameraMaskName"></span>
+        </div>
+        <div class="viewfinder">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="cameraOverlay" aria-hidden="true"></canvas>
+          <div class="camera-error" id="cameraError">
+            <strong>לא הצלחתי לפתוח מצלמה.</strong>
+            <p>כדאי לבדוק שהדפדפן קיבל הרשאת מצלמה, ושפתחת את האפליקציה דרך HTTPS או localhost.</p>
+            <button class="primary" id="retryCameraBtn">לנסות שוב</button>
+          </div>
+        </div>
+        <div class="camera-bottom">
+          <button class="shutter" id="captureBtn"><span class="sr-only">צילום</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="resultScreen" aria-labelledby="resultTitle">
+      <div class="result-grid">
+        <img class="result-image" id="resultImage" alt="התמונה שצולמה דרך השקף" />
+        <div class="card result-panel">
+          <h2 id="resultTitle">התוצאה שלך</h2>
+          <p class="hint">אפשר להוסיף משפט לעצמך. הוא לא נשמר בענן ולא נשלח לאף אחד.</p>
+          <label for="reflectionText"><strong>משפט אחד על מה שראיתי או הסתרתי</strong></label>
+          <textarea id="reflectionText" placeholder="אפשר לכתוב כאן, ואפשר גם לדלג."></textarea>
+          <div class="actions">
+            <button class="primary" id="downloadBtn">שמירת תמונה</button>
+            <button class="secondary" id="shareBtn">שיתוף</button>
+            <button class="ghost" id="retakeBtn">צילום נוסף</button>
+          </div>
+          <p class="small">אם כפתור השיתוף לא נתמך בדפדפן, שמרו את התמונה ושלחו אותה בעצמכם.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <canvas id="captureCanvas" class="sr-only"></canvas>
+
+  <script>
+    const screens = {
+      home: document.getElementById('homeScreen'),
+      prompt: document.getElementById('promptScreen'),
+      gallery: document.getElementById('galleryScreen'),
+      camera: document.getElementById('cameraScreen'),
+      result: document.getElementById('resultScreen')
+    };
+    const prompts = [
+      'צלמו משהו שאתם בוחרים להסתיר חלק ממנו.',
+      'חפשו דבר שמרגיש קרוב, והשאירו ממנו רק רמז.',
+      'צלמו מקום שבו יש שקט, גם אם הוא לא שלם.',
+      'בחרו משהו שמושך את העין, ואז הסתירו את מה שמפריע.',
+      'צלמו משהו שמרגיש גלוי מדי.',
+      'מצאו גבול בין מה שמותר לראות לבין מה שנשאר בפנים.',
+      'צלמו משהו קטן שמחזיק סיפור גדול.',
+      'בחרו פריים שבו החלק החסר חשוב כמו החלק הגלוי.'
+    ];
+    const masks = [
+      { id: 'frameCircle', name: 'חלון עגול', draw: (ctx,w,h,a) => { fill(ctx,w,h,a); holeCircle(ctx,w*.5,h*.5,Math.min(w,h)*.26); } },
+      { id: 'frameSquare', name: 'חלון מרובע', draw: (ctx,w,h,a) => { fill(ctx,w,h,a); clearRound(ctx,w*.2,h*.22,w*.6,h*.56,18); } },
+      { id: 'leftHalf', name: 'חצי שמאל מוסתר', draw: (ctx,w,h,a) => { rect(ctx,0,0,w*.5,h,a); } },
+      { id: 'rightHalf', name: 'חצי ימין מוסתר', draw: (ctx,w,h,a) => { rect(ctx,w*.5,0,w*.5,h,a); } },
+      { id: 'topBand', name: 'שמיים מוסתרים', draw: (ctx,w,h,a) => { rect(ctx,0,0,w,h*.42,a); } },
+      { id: 'bottomBand', name: 'קרקע מוסתרת', draw: (ctx,w,h,a) => { rect(ctx,0,h*.58,w,h*.42,a); } },
+      { id: 'shutters', name: 'תריסים', draw: (ctx,w,h,a) => { for (let y=0; y<h; y+=h/8) rect(ctx,0,y,w,h/14,a); } },
+      { id: 'narrowSlit', name: 'פס ראייה', draw: (ctx,w,h,a) => { fill(ctx,w,h,a); clearRound(ctx,w*.12,h*.42,w*.76,h*.16,999); } },
+      { id: 'diagonal', name: 'אלכסון', draw: (ctx,w,h,a) => { ctx.save(); ctx.globalAlpha=a; ctx.fillStyle='#000'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(w*.68,0); ctx.lineTo(0,h*.68); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(w,h); ctx.lineTo(w*.32,h); ctx.lineTo(w,h*.32); ctx.closePath(); ctx.fill(); ctx.restore(); } },
+      { id: 'spots', name: 'כתמים', draw: (ctx,w,h,a) => { [[.2,.24,.16],[.68,.2,.12],[.78,.62,.18],[.34,.72,.14],[.52,.48,.1]].forEach(([x,y,r]) => blob(ctx,w*x,h*y,Math.min(w,h)*r,a)); } },
+      { id: 'centerBlock', name: 'מרכז מוסתר', draw: (ctx,w,h,a) => { clear(ctx,w,h); rect(ctx,w*.28,h*.25,w*.44,h*.5,a); } },
+      { id: 'twoWindows', name: 'שני חלונות', draw: (ctx,w,h,a) => { fill(ctx,w,h,a); holeCircle(ctx,w*.33,h*.42,Math.min(w,h)*.17); holeCircle(ctx,w*.67,h*.58,Math.min(w,h)*.17); } }
+    ];
+
+    let selectedMask = masks[0];
+    let stream = null;
+    let imageBlob = null;
+    let imageFile = null;
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('cameraOverlay');
+    const overlayCtx = overlay.getContext('2d');
+    const captureCanvas = document.getElementById('captureCanvas');
+    const captureCtx = captureCanvas.getContext('2d');
+
+    function show(name) {
+      Object.values(screens).forEach(screen => screen.classList.remove('active'));
+      screens[name].classList.add('active');
+      if (name !== 'camera') stopCamera();
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+    function randomPrompt() {
+      document.getElementById('promptText').textContent = prompts[Math.floor(Math.random() * prompts.length)];
+    }
+    function fill(ctx,w,h,a) { rect(ctx,0,0,w,h,a); }
+    function clear(ctx,w,h) { ctx.clearRect(0,0,w,h); }
+    function rect(ctx,x,y,w,h,a) { ctx.save(); ctx.globalAlpha=a; ctx.fillStyle='#000'; ctx.fillRect(x,y,w,h); ctx.restore(); }
+    function clearRound(ctx,x,y,w,h,r) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.roundRect(x,y,w,h,r);
+      ctx.fill();
+      ctx.restore();
+    }
+    function holeCircle(ctx,x,y,r) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+    function blob(ctx,x,y,r,a) {
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      for (let i=0; i<10; i++) {
+        const angle = (Math.PI*2/10)*i;
+        const radius = r * (0.75 + (i % 3) * 0.12);
+        const px = x + Math.cos(angle) * radius;
+        const py = y + Math.sin(angle) * radius;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    function drawMask(ctx, w, h, mask = selectedMask, alpha = 1) {
+      ctx.clearRect(0,0,w,h);
+      mask.draw(ctx,w,h,alpha);
+    }
+    function renderMaskGrid() {
+      const grid = document.getElementById('maskGrid');
+      grid.innerHTML = '';
+      masks.forEach(mask => {
+        const button = document.createElement('button');
+        button.className = 'mask-card' + (mask.id === selectedMask.id ? ' selected' : '');
+        button.type = 'button';
+        button.innerHTML = `<div class="mask-thumb"><canvas width="240" height="300"></canvas></div><div class="mask-name">${mask.name}</div>`;
+        const canvas = button.querySelector('canvas');
+        drawMask(canvas.getContext('2d'), canvas.width, canvas.height, mask, 1);
+        button.addEventListener('click', () => {
+          selectedMask = mask;
+          startCamera();
+        });
+        grid.appendChild(button);
+      });
+    }
+    function sizeOverlay() {
+      const rect = overlay.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      overlay.width = Math.max(1, Math.round(rect.width * dpr));
+      overlay.height = Math.max(1, Math.round(rect.height * dpr));
+      overlayCtx.setTransform(dpr,0,0,dpr,0,0);
+      drawMask(overlayCtx, rect.width, rect.height, selectedMask, 1);
+    }
+    async function startCamera() {
+      show('camera');
+      document.getElementById('cameraMaskName').textContent = selectedMask.name;
+      document.getElementById('cameraError').style.display = 'none';
+      try {
+        stopCamera();
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
+        requestAnimationFrame(sizeOverlay);
+      } catch (error) {
+        document.getElementById('cameraError').style.display = 'block';
+      }
+    }
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+    }
+    function capture() {
+      if (!video.videoWidth || !video.videoHeight) return;
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      captureCanvas.width = vw;
+      captureCanvas.height = vh;
+      captureCtx.drawImage(video, 0, 0, vw, vh);
+      drawMask(captureCtx, vw, vh, selectedMask, 1);
+      captureCanvas.toBlob(blob => {
+        imageBlob = blob;
+        imageFile = new File([blob], `shekef-photo-${Date.now()}.png`, { type: 'image/png' });
+        document.getElementById('resultImage').src = URL.createObjectURL(blob);
+        document.getElementById('reflectionText').value = '';
+        show('result');
+      }, 'image/png', 0.95);
+    }
+    function downloadImage() {
+      if (!imageBlob) return;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(imageBlob);
+      link.download = imageFile?.name || `shekef-photo-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    async function shareImage() {
+      if (!imageFile) return downloadImage();
+      if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+        await navigator.share({
+          title: 'שקף צילום',
+          text: document.getElementById('reflectionText').value || 'צילום מתוך תרגיל שקף',
+          files: [imageFile]
+        });
+      } else {
+        downloadImage();
+      }
+    }
+
+    document.getElementById('startBtn').addEventListener('click', () => { randomPrompt(); show('prompt'); });
+    document.getElementById('newPromptBtn').addEventListener('click', randomPrompt);
+    document.getElementById('chooseMaskBtn').addEventListener('click', () => { renderMaskGrid(); show('gallery'); });
+    document.getElementById('backToPromptBtn').addEventListener('click', () => show('prompt'));
+    document.getElementById('backToGalleryBtn').addEventListener('click', () => { renderMaskGrid(); show('gallery'); });
+    document.getElementById('retryCameraBtn').addEventListener('click', startCamera);
+    document.getElementById('captureBtn').addEventListener('click', capture);
+    document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+    document.getElementById('shareBtn').addEventListener('click', () => shareImage().catch(downloadImage));
+    document.getElementById('retakeBtn').addEventListener('click', () => { renderMaskGrid(); show('gallery'); });
+    window.addEventListener('resize', () => { if (screens.camera.classList.contains('active')) sizeOverlay(); });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
