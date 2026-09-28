@@ -6,17 +6,20 @@
   <meta name="theme-color" content="#111827" />
   <meta name="description" content="תרגיל צילום פוטותרפי עם שקפים וירטואליים. כל התוצרים נשארים במכשיר." />
   <title>שקף צילום</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111827'/%3E%3Cpath d='M14 18h36v28H14z' fill='%23f8fafc'/%3E%3Cpath d='M14 18h36v28H14z' fill='none' stroke='%23000' stroke-width='8'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23111827'/%3E%3C/svg%3E" />
   <style>
     :root {
-      --bg: #f4f1eb;
+      --bg: #eef2f7;
       --ink: #111827;
       --muted: #5b6472;
       --panel: rgba(255,255,255,.86);
-      --line: #ded8cf;
-      --accent: #7c3aed;
-      --accent-dark: #4c1d95;
+      --line: #dbe3ee;
+      --accent: #2563eb;
+      --accent-dark: #1e40af;
       --danger: #991b1b;
       --shadow: 0 20px 70px rgba(17,24,39,.14);
       --radius: 10px;
@@ -25,11 +28,12 @@
     html, body { height: 100%; }
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      font-family: "Open Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
       color: var(--ink);
       background:
-        linear-gradient(140deg, rgba(124,58,237,.12), transparent 36%),
-        radial-gradient(circle at 85% 12%, rgba(17,24,39,.09), transparent 28%),
+        linear-gradient(135deg, rgba(37,99,235,.13), transparent 38%),
+        radial-gradient(circle at 84% 12%, rgba(15,23,42,.10), transparent 28%),
+        radial-gradient(circle at 12% 88%, rgba(14,165,233,.12), transparent 32%),
         var(--bg);
       min-height: 100%;
     }
@@ -162,13 +166,15 @@
     .mask-thumb canvas { width: 100%; height: 100%; display: block; }
     .mask-name { font-size: 16px; font-weight: 800; }
     .camera-shell {
+      position: fixed;
+      inset: 0;
       min-height: 100dvh;
       width: 100vw;
-      margin: -18px;
-      background: #050505;
+      background: #020617;
       display: grid;
       grid-template-rows: auto 1fr auto;
       color: #fff;
+      z-index: 20;
     }
     .camera-top, .camera-bottom {
       display: flex;
@@ -179,13 +185,28 @@
       z-index: 3;
     }
     .camera-bottom { padding: 14px 14px max(18px, env(safe-area-inset-bottom)); justify-content: center; }
-    .camera-top button, .camera-bottom button { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2); }
+    .camera-title {
+      display: grid;
+      gap: 2px;
+      text-align: center;
+      font-weight: 800;
+    }
+    .camera-title small {
+      color: rgba(255,255,255,.68);
+      font-weight: 600;
+    }
+    .camera-top button, .camera-bottom button {
+      background: rgba(255,255,255,.10);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.24);
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
     .viewfinder {
       position: relative;
       overflow: hidden;
       display: grid;
       place-items: center;
-      background: #111;
+      background: #020617;
     }
     video, #cameraOverlay {
       position: absolute;
@@ -308,7 +329,8 @@
       <div class="camera-shell">
         <div class="camera-top">
           <button id="backToGalleryBtn">בחירת שקף</button>
-          <span id="cameraMaskName"></span>
+          <span class="camera-title"><span id="cameraMaskName"></span><small id="cameraFacingLabel">מצלמה אחורית</small></span>
+          <button id="switchCameraBtn">החלפת מצלמה</button>
         </div>
         <div class="viewfinder">
           <video id="video" autoplay playsinline muted></video>
@@ -382,6 +404,7 @@
     let stream = null;
     let imageBlob = null;
     let imageFile = null;
+    let cameraFacingMode = 'environment';
     const video = document.getElementById('video');
     const overlay = document.getElementById('cameraOverlay');
     const overlayCtx = overlay.getContext('2d');
@@ -436,6 +459,23 @@
       ctx.clearRect(0,0,w,h);
       mask.draw(ctx,w,h,alpha);
     }
+    function createMaskCanvas(w, h, mask = selectedMask, alpha = 1) {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      drawMask(canvas.getContext('2d'), w, h, mask, alpha);
+      return canvas;
+    }
+    function drawVideoCover(ctx, videoEl, w, h) {
+      const vw = videoEl.videoWidth;
+      const vh = videoEl.videoHeight;
+      const scale = Math.max(w / vw, h / vh);
+      const sw = w / scale;
+      const sh = h / scale;
+      const sx = (vw - sw) / 2;
+      const sy = (vh - sh) / 2;
+      ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, w, h);
+    }
     function renderMaskGrid() {
       const grid = document.getElementById('maskGrid');
       grid.innerHTML = '';
@@ -464,11 +504,12 @@
     async function startCamera() {
       show('camera');
       document.getElementById('cameraMaskName').textContent = selectedMask.name;
+      document.getElementById('cameraFacingLabel').textContent = cameraFacingMode === 'environment' ? 'מצלמה אחורית' : 'מצלמה קדמית';
       document.getElementById('cameraError').style.display = 'none';
       try {
         stopCamera();
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: { facingMode: { ideal: cameraFacingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false
         });
         video.srcObject = stream;
@@ -487,12 +528,12 @@
     }
     function capture() {
       if (!video.videoWidth || !video.videoHeight) return;
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      captureCanvas.width = vw;
-      captureCanvas.height = vh;
-      captureCtx.drawImage(video, 0, 0, vw, vh);
-      drawMask(captureCtx, vw, vh, selectedMask, 1);
+      const w = overlay.width || video.videoWidth;
+      const h = overlay.height || video.videoHeight;
+      captureCanvas.width = w;
+      captureCanvas.height = h;
+      drawVideoCover(captureCtx, video, w, h);
+      captureCtx.drawImage(createMaskCanvas(w, h, selectedMask, 1), 0, 0);
       captureCanvas.toBlob(blob => {
         imageBlob = blob;
         imageFile = new File([blob], `shekef-photo-${Date.now()}.png`, { type: 'image/png' });
@@ -500,6 +541,10 @@
         document.getElementById('reflectionText').value = '';
         show('result');
       }, 'image/png', 0.95);
+    }
+    function switchCamera() {
+      cameraFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
+      startCamera();
     }
     function downloadImage() {
       if (!imageBlob) return;
@@ -529,6 +574,7 @@
     document.getElementById('backToPromptBtn').addEventListener('click', () => show('prompt'));
     document.getElementById('backToGalleryBtn').addEventListener('click', () => { renderMaskGrid(); show('gallery'); });
     document.getElementById('retryCameraBtn').addEventListener('click', startCamera);
+    document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
     document.getElementById('captureBtn').addEventListener('click', capture);
     document.getElementById('downloadBtn').addEventListener('click', downloadImage);
     document.getElementById('shareBtn').addEventListener('click', () => shareImage().catch(downloadImage));
