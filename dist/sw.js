@@ -1,4 +1,4 @@
-const CACHE_NAME = 'phototherapy-mask-v3';
+const CACHE_NAME = 'phototherapy-mask-v4';
 const ASSETS = [
   './',
   './index.html',

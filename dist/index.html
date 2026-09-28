@@ -36,7 +36,7 @@
         linear-gradient(135deg, #f7f3ed 0%, #fbfaf7 52%, #eee8df 100%);
       min-height: 100%;
     }
-    button, textarea { font: inherit; }
+    button, textarea, input { font: inherit; }
     button {
       border: 0;
       border-radius: 999px;
@@ -116,6 +116,25 @@
       transform: rotate(-10deg);
       border-radius: 999px;
     }
+    .split-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+    .choice-card {
+      min-height: 136px;
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.72);
+      text-align: start;
+      display: grid;
+      align-content: space-between;
+      color: var(--ink);
+    }
+    .choice-card strong { display: block; font-size: 20px; margin-bottom: 8px; }
+    .choice-card span { color: var(--muted); font-weight: 600; line-height: 1.45; }
     .prompt-card {
       padding: clamp(22px, 5vw, 50px);
       min-height: 430px;
@@ -138,14 +157,14 @@
     }
     .mask-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
     }
     .mask-card {
       background: var(--panel);
       border: 2px solid transparent;
       border-radius: var(--radius);
-      padding: 12px;
+      padding: 9px;
       box-shadow: 0 10px 26px rgba(17,24,39,.08);
       text-align: start;
       color: var(--ink);
@@ -160,10 +179,68 @@
       position: relative;
       overflow: hidden;
       border: 1px solid var(--line);
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .mask-thumb canvas { width: 100%; height: 100%; display: block; }
-    .mask-name { font-size: 16px; font-weight: 800; }
+    .mask-name { font-size: 14px; font-weight: 800; }
+    .section-label {
+      grid-column: 1 / -1;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .creator-grid {
+      display: grid;
+      grid-template-columns: .92fr 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    .creator-panel { padding: clamp(18px, 4vw, 34px); }
+    .creator-preview {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(160deg, rgba(17,17,17,.1), transparent 34%),
+        linear-gradient(20deg, #d8d1c7, #fffdf8 58%, #bfc7ce);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .creator-preview canvas { width: 100%; height: 100%; display: block; }
+    .control {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--ink);
+    }
+    .prepare-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, .8fr) 1fr;
+      gap: 22px;
+      align-items: center;
+    }
+    .prepare-preview {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: linear-gradient(140deg, #d8d1c7, #fffdf8 56%, #bec8d0);
+      box-shadow: var(--shadow);
+    }
+    .prepare-preview canvas { width: 100%; height: 100%; display: block; }
     .camera-shell {
       position: fixed;
       inset: 0;
@@ -294,9 +371,11 @@
       .hero { padding: 22px; min-height: calc(100dvh - 24px); align-content: center; }
       .preview-stack { display: none; }
       .gallery-head { display: block; }
-      .mask-grid { grid-template-columns: repeat(2, 1fr); }
-      .mask-card { padding: 9px; }
-      .mask-name { font-size: 14px; }
+      .split-actions, .creator-grid, .prepare-grid { grid-template-columns: 1fr; }
+      .mask-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .mask-card { padding: 7px; border-radius: 14px; }
+      .mask-thumb { border-radius: 12px; margin-bottom: 6px; }
+      .mask-name { font-size: 12px; }
       .actions button { flex: 1 1 100%; }
       .result-panel { padding: 18px; }
       .camera-top {
@@ -318,8 +397,15 @@
           <h1 id="homeTitle">שקף צילום</h1>
           <p class="lead">בחרו שקף, הביטו דרך החלקים הגלויים, וצלמו פריים אחד שמחזיק גם הסתרה וגם גילוי.</p>
           <div class="privacy">פרטי לחלוטין: אין העלאה לשרת, אין חשבון, ואין שמירה באפליקציה.</div>
-          <div class="actions">
-            <button class="primary" id="startBtn">התחלה</button>
+          <div class="split-actions">
+            <button class="choice-card" id="startBtn">
+              <strong>צילום עם שקף</strong>
+              <span>בחירת שקף מוכן או שקף אישי ששמרת, ואז צילום דרך השכבה.</span>
+            </button>
+            <button class="choice-card" id="createPersonalBtn">
+              <strong>יצירת שקף אישי</strong>
+              <span>הפיכת צילום או תמונה לשקף נגטיב שקוף לשימוש חוזר.</span>
+            </button>
           </div>
         </div>
         <div class="preview-stack" aria-hidden="true"></div>
@@ -346,6 +432,55 @@
         <button class="ghost" id="backToPromptBtn">חזרה להנחיה</button>
       </div>
       <div class="mask-grid" id="maskGrid"></div>
+    </section>
+
+    <section class="screen" id="creatorScreen" aria-labelledby="creatorTitle">
+      <div class="creator-grid">
+        <div class="creator-preview">
+          <canvas id="personalPreview" width="720" height="960" aria-label="תצוגת שקף אישי"></canvas>
+        </div>
+        <div class="card creator-panel">
+          <h2 id="creatorTitle">יצירת שקף אישי</h2>
+          <p class="hint">בחרו תמונה או צלמו אחת חדשה. האפליקציה תהפוך אותה לשקף נגטיב חצי שקוף, שנשמר רק במכשיר הזה.</p>
+          <div class="actions">
+            <button class="primary" id="pickImageBtn">בחירת תמונה</button>
+            <button class="secondary" id="captureSourceBtn">צילום מקור</button>
+            <button class="ghost" id="backHomeFromCreatorBtn">חזרה</button>
+          </div>
+          <div class="control">
+            <label for="opacityRange">שקיפות <span id="opacityValue">58%</span></label>
+            <input id="opacityRange" type="range" min="25" max="90" value="58" />
+          </div>
+          <div class="control">
+            <label for="contrastRange">ניגודיות <span id="contrastValue">130%</span></label>
+            <input id="contrastRange" type="range" min="70" max="190" value="130" />
+          </div>
+          <div class="actions">
+            <button class="primary" id="savePersonalBtn">שמירת שקף</button>
+            <button class="secondary" id="downloadMaskBtn">הורדת שקף</button>
+          </div>
+          <p class="small" id="creatorStatus">עדיין לא נבחרה תמונה.</p>
+        </div>
+      </div>
+      <input class="sr-only" id="imageInput" type="file" accept="image/*" />
+      <input class="sr-only" id="cameraImageInput" type="file" accept="image/*" capture="environment" />
+    </section>
+
+    <section class="screen" id="prepareScreen" aria-labelledby="prepareTitle">
+      <div class="prepare-grid">
+        <div class="prepare-preview">
+          <canvas id="preparePreview" width="720" height="960" aria-hidden="true"></canvas>
+        </div>
+        <div class="card result-panel">
+          <p class="hint">לפני הצילום</p>
+          <h2 id="prepareTitle">הכנה לצילום</h2>
+          <p class="lead" id="prepareText"></p>
+          <div class="actions">
+            <button class="primary" id="continueCameraBtn">המשך לצילום</button>
+            <button class="secondary" id="backToGalleryFromPrepareBtn">בחירת שקף אחר</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="screen" id="cameraScreen" aria-label="מצלמה">
@@ -400,6 +535,8 @@
       home: document.getElementById('homeScreen'),
       prompt: document.getElementById('promptScreen'),
       gallery: document.getElementById('galleryScreen'),
+      creator: document.getElementById('creatorScreen'),
+      prepare: document.getElementById('prepareScreen'),
       camera: document.getElementById('cameraScreen'),
       result: document.getElementById('resultScreen')
     };
@@ -429,6 +566,9 @@
     ];
 
     let selectedMask = masks[0];
+    let personalMasks = [];
+    let personalSourceImage = null;
+    let personalDraftDataUrl = null;
     let stream = null;
     let imageBlob = null;
     let imageFile = null;
@@ -438,6 +578,12 @@
     const overlayCtx = overlay.getContext('2d');
     const captureCanvas = document.getElementById('captureCanvas');
     const captureCtx = captureCanvas.getContext('2d');
+    const personalPreview = document.getElementById('personalPreview');
+    const personalPreviewCtx = personalPreview.getContext('2d');
+    const preparePreview = document.getElementById('preparePreview');
+    const preparePreviewCtx = preparePreview.getContext('2d');
+    const DB_NAME = 'phototherapy-mask-db';
+    const STORE_NAME = 'personalMasks';
 
     function show(name) {
       Object.values(screens).forEach(screen => screen.classList.remove('active'));
@@ -447,6 +593,39 @@
     }
     function randomPrompt() {
       document.getElementById('promptText').textContent = prompts[Math.floor(Math.random() * prompts.length)];
+    }
+    function openDb() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    async function loadPersonalMasks() {
+      try {
+        const db = await openDb();
+        personalMasks = await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const request = tx.objectStore(STORE_NAME).getAll();
+          request.onsuccess = () => resolve(request.result.sort((a, b) => b.createdAt - a.createdAt));
+          request.onerror = () => reject(request.error);
+        });
+        db.close();
+      } catch (error) {
+        personalMasks = [];
+      }
+    }
+    async function savePersonalMask(mask) {
+      const db = await openDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(mask);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+      await loadPersonalMasks();
     }
     function fill(ctx,w,h,a) { rect(ctx,0,0,w,h,a); }
     function clear(ctx,w,h) { ctx.clearRect(0,0,w,h); }
@@ -485,6 +664,10 @@
     }
     function drawMask(ctx, w, h, mask = selectedMask, alpha = 1) {
       ctx.clearRect(0,0,w,h);
+      if (mask.type === 'personal-negative' && mask.image) {
+        drawImageCover(ctx, mask.image, w, h, alpha);
+        return;
+      }
       mask.draw(ctx,w,h,alpha);
     }
     function createMaskCanvas(w, h, mask = selectedMask, alpha = 1) {
@@ -493,6 +676,29 @@
       canvas.height = h;
       drawMask(canvas.getContext('2d'), w, h, mask, alpha);
       return canvas;
+    }
+    function drawImageCover(ctx, image, w, h, alpha = 1) {
+      const iw = image.naturalWidth || image.width;
+      const ih = image.naturalHeight || image.height;
+      if (!iw || !ih) return;
+      const scale = Math.max(w / iw, h / ih);
+      const sw = w / scale;
+      const sh = h / scale;
+      const sx = (iw - sw) / 2;
+      const sy = (ih - sh) / 2;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(image, sx, sy, sw, sh, 0, 0, w, h);
+      ctx.restore();
+    }
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = src;
+      });
     }
     function drawVideoCover(ctx, videoEl, w, h) {
       const vw = videoEl.videoWidth;
@@ -521,9 +727,101 @@
         pixelHeight: Math.max(1, Math.round(box.height * dpr))
       };
     }
-    function renderMaskGrid() {
+    function renderNeutralPreview(ctx, w, h) {
+      const gradient = ctx.createLinearGradient(0, 0, w, h);
+      gradient.addColorStop(0, '#cfc7bc');
+      gradient.addColorStop(.55, '#fffdf8');
+      gradient.addColorStop(1, '#aeb9c1');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,.38)';
+      ctx.fillRect(0, h * .47, w, h * .18);
+    }
+    function makePersonalNegativeCanvas(sourceImage, width = 720, height = 960) {
+      const opacity = Number(document.getElementById('opacityRange').value) / 100;
+      const contrast = Number(document.getElementById('contrastRange').value) / 100;
+      const source = document.createElement('canvas');
+      source.width = width;
+      source.height = height;
+      const sourceCtx = source.getContext('2d', { willReadFrequently: true });
+      sourceCtx.fillStyle = '#fff';
+      sourceCtx.fillRect(0, 0, width, height);
+      drawImageCover(sourceCtx, sourceImage, width, height, 1);
+
+      const imageData = sourceCtx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = data[i] * .299 + data[i + 1] * .587 + data[i + 2] * .114;
+        let negative = 255 - gray;
+        negative = Math.max(0, Math.min(255, (negative - 128) * contrast + 128));
+        const alpha = opacity * (55 + negative * .72);
+        data[i] = negative;
+        data[i + 1] = negative;
+        data[i + 2] = negative;
+        data[i + 3] = Math.max(0, Math.min(235, alpha));
+      }
+      sourceCtx.putImageData(imageData, 0, 0);
+      return source;
+    }
+    function updateCreatorPreview() {
+      const opacity = document.getElementById('opacityRange').value;
+      const contrast = document.getElementById('contrastRange').value;
+      document.getElementById('opacityValue').textContent = `${opacity}%`;
+      document.getElementById('contrastValue').textContent = `${contrast}%`;
+      personalPreviewCtx.clearRect(0, 0, personalPreview.width, personalPreview.height);
+      renderNeutralPreview(personalPreviewCtx, personalPreview.width, personalPreview.height);
+      if (!personalSourceImage) {
+        personalPreviewCtx.fillStyle = 'rgba(23,23,23,.62)';
+        personalPreviewCtx.font = '700 34px Open Sans, Arial';
+        personalPreviewCtx.textAlign = 'center';
+        personalPreviewCtx.fillText('בחרו תמונה ליצירת שקף', personalPreview.width / 2, personalPreview.height / 2);
+        return;
+      }
+      const negative = makePersonalNegativeCanvas(personalSourceImage, personalPreview.width, personalPreview.height);
+      personalDraftDataUrl = negative.toDataURL('image/png');
+      personalPreviewCtx.drawImage(negative, 0, 0);
+      document.getElementById('creatorStatus').textContent = 'השקף מוכן לשמירה או להורדה.';
+    }
+    async function handleSourceFile(file) {
+      if (!file) return;
+      const dataUrl = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+      personalSourceImage = await loadImage(dataUrl);
+      updateCreatorPreview();
+    }
+    async function renderMaskGrid() {
       const grid = document.getElementById('maskGrid');
       grid.innerHTML = '';
+      if (personalMasks.length) {
+        const label = document.createElement('div');
+        label.className = 'section-label';
+        label.textContent = 'השקפים שלי';
+        grid.appendChild(label);
+        for (const personal of personalMasks) {
+          const image = await loadImage(personal.dataUrl);
+          const mask = { ...personal, type: 'personal-negative', image };
+          const button = document.createElement('button');
+          button.className = 'mask-card';
+          button.type = 'button';
+          button.innerHTML = `<div class="mask-thumb"><canvas width="240" height="300"></canvas></div><div class="mask-name">${personal.name}</div>`;
+          const canvas = button.querySelector('canvas');
+          const ctx = canvas.getContext('2d');
+          renderNeutralPreview(ctx, canvas.width, canvas.height);
+          drawMask(ctx, canvas.width, canvas.height, mask, 1);
+          button.addEventListener('click', () => {
+            selectedMask = mask;
+            showPrepare();
+          });
+          grid.appendChild(button);
+        }
+      }
+      const readyLabel = document.createElement('div');
+      readyLabel.className = 'section-label';
+      readyLabel.textContent = 'תבניות מוכנות';
+      grid.appendChild(readyLabel);
       masks.forEach(mask => {
         const button = document.createElement('button');
         button.className = 'mask-card' + (mask.id === selectedMask.id ? ' selected' : '');
@@ -532,11 +830,22 @@
         const canvas = button.querySelector('canvas');
         drawMask(canvas.getContext('2d'), canvas.width, canvas.height, mask, 1);
         button.addEventListener('click', () => {
-          selectedMask = mask;
-          startCamera();
+          selectedMask = { ...mask, type: 'preset' };
+          showPrepare();
         });
         grid.appendChild(button);
       });
+    }
+    function showPrepare() {
+      const isPersonal = selectedMask.type === 'personal-negative';
+      document.getElementById('prepareTitle').textContent = selectedMask.name;
+      document.getElementById('prepareText').textContent = isPersonal
+        ? 'מה היית רוצה להכניס לתוכך דרך השקף הזה? בחרו משהו בעולם ותנו לו להופיע דרך המסכה האישית.'
+        : 'מה נשאר גלוי ומה מוסתר? בחרו פריים שבו החלקים הגלויים מספרים משהו גם על מה שלא רואים.';
+      preparePreviewCtx.clearRect(0, 0, preparePreview.width, preparePreview.height);
+      renderNeutralPreview(preparePreviewCtx, preparePreview.width, preparePreview.height);
+      drawMask(preparePreviewCtx, preparePreview.width, preparePreview.height, selectedMask, 1);
+      show('prepare');
     }
     function sizeOverlay() {
       const rect = overlay.getBoundingClientRect();
@@ -600,6 +909,40 @@
       link.click();
       link.remove();
     }
+    function downloadDataUrl(dataUrl, filename) {
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+    async function saveCurrentPersonalMask() {
+      if (!personalDraftDataUrl) {
+        document.getElementById('creatorStatus').textContent = 'צריך לבחור או לצלם תמונה לפני שמירה.';
+        return;
+      }
+      const mask = {
+        id: `personal-${Date.now()}`,
+        type: 'personal-negative',
+        name: `השקף שלי ${personalMasks.length + 1}`,
+        createdAt: Date.now(),
+        dataUrl: personalDraftDataUrl,
+        opacity: Number(document.getElementById('opacityRange').value),
+        contrast: Number(document.getElementById('contrastRange').value)
+      };
+      await savePersonalMask(mask);
+      document.getElementById('creatorStatus').textContent = 'השקף נשמר באפליקציה.';
+      await renderMaskGrid();
+      show('gallery');
+    }
+    function downloadCurrentPersonalMask() {
+      if (!personalDraftDataUrl) {
+        document.getElementById('creatorStatus').textContent = 'צריך לבחור או לצלם תמונה לפני הורדה.';
+        return;
+      }
+      downloadDataUrl(personalDraftDataUrl, `shekef-mask-${Date.now()}.png`);
+    }
     async function shareImage() {
       if (!imageFile) return downloadImage();
       if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
@@ -613,18 +956,33 @@
       }
     }
 
-    document.getElementById('startBtn').addEventListener('click', () => { randomPrompt(); show('prompt'); });
+    document.getElementById('startBtn').addEventListener('click', async () => { await renderMaskGrid(); show('gallery'); });
+    document.getElementById('createPersonalBtn').addEventListener('click', () => { updateCreatorPreview(); show('creator'); });
     document.getElementById('newPromptBtn').addEventListener('click', randomPrompt);
-    document.getElementById('chooseMaskBtn').addEventListener('click', () => { renderMaskGrid(); show('gallery'); });
+    document.getElementById('chooseMaskBtn').addEventListener('click', async () => { await renderMaskGrid(); show('gallery'); });
     document.getElementById('backToPromptBtn').addEventListener('click', () => show('prompt'));
-    document.getElementById('backToGalleryBtn').addEventListener('click', () => { renderMaskGrid(); show('gallery'); });
+    document.getElementById('backToGalleryBtn').addEventListener('click', async () => { await renderMaskGrid(); show('gallery'); });
+    document.getElementById('backHomeFromCreatorBtn').addEventListener('click', () => show('home'));
+    document.getElementById('pickImageBtn').addEventListener('click', () => document.getElementById('imageInput').click());
+    document.getElementById('captureSourceBtn').addEventListener('click', () => document.getElementById('cameraImageInput').click());
+    document.getElementById('imageInput').addEventListener('change', event => handleSourceFile(event.target.files[0]));
+    document.getElementById('cameraImageInput').addEventListener('change', event => handleSourceFile(event.target.files[0]));
+    document.getElementById('opacityRange').addEventListener('input', updateCreatorPreview);
+    document.getElementById('contrastRange').addEventListener('input', updateCreatorPreview);
+    document.getElementById('savePersonalBtn').addEventListener('click', () => saveCurrentPersonalMask().catch(() => {
+      document.getElementById('creatorStatus').textContent = 'לא הצלחתי לשמור במכשיר הזה.';
+    }));
+    document.getElementById('downloadMaskBtn').addEventListener('click', downloadCurrentPersonalMask);
+    document.getElementById('continueCameraBtn').addEventListener('click', startCamera);
+    document.getElementById('backToGalleryFromPrepareBtn').addEventListener('click', async () => { await renderMaskGrid(); show('gallery'); });
     document.getElementById('retryCameraBtn').addEventListener('click', startCamera);
     document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
     document.getElementById('captureBtn').addEventListener('click', capture);
     document.getElementById('downloadBtn').addEventListener('click', downloadImage);
     document.getElementById('shareBtn').addEventListener('click', () => shareImage().catch(downloadImage));
-    document.getElementById('retakeBtn').addEventListener('click', () => { renderMaskGrid(); show('gallery'); });
+    document.getElementById('retakeBtn').addEventListener('click', async () => { await renderMaskGrid(); show('gallery'); });
     window.addEventListener('resize', () => { if (screens.camera.classList.contains('active')) sizeOverlay(); });
+    loadPersonalMasks().then(updateCreatorPreview);
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
     }
