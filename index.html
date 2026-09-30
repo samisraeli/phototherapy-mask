@@ -31,11 +31,11 @@
       --bg: #f5f2ed;
       --ink: #111827;
       --muted: #6b7280;
-      --panel: rgba(255,255,255,.94);
+      --panel: rgba(255,255,255,.95);
       --line: #e5e0d8;
       --accent: #111827;
       --accent-soft: #eae4da;
-      --paper: #fffdfa;
+      --paper: #ffffff;
       --shadow: 0 14px 34px rgba(30,25,18,.08);
       --radius: 18px;
       --topbar-height: 52px;
@@ -201,8 +201,8 @@
     /* Main Container & Screens */
     .app {
       min-height: 100dvh;
-      padding-top: calc(var(--topbar-height) + 10px);
-      padding-bottom: calc(var(--bottombar-height) + 16px);
+      padding-top: calc(var(--topbar-height) + 8px);
+      padding-bottom: calc(var(--bottombar-height) + 14px);
       padding-left: 14px;
       padding-right: 14px;
       display: flex;
@@ -210,12 +210,6 @@
       align-items: center;
       justify-content: flex-start;
       box-sizing: border-box;
-    }
-    .app.in-camera {
-      padding: 0 !important;
-      min-height: 100dvh;
-      height: 100dvh;
-      overflow: hidden;
     }
     .screen {
       width: min(780px, 100%);
@@ -230,17 +224,17 @@
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: clamp(16px, 4vw, 26px);
+      padding: clamp(16px, 4vw, 24px);
       box-sizing: border-box;
     }
 
     /* Home Screen */
     .hero-box {
       text-align: center;
-      padding: clamp(24px, 5vw, 38px) clamp(16px, 4vw, 28px);
+      padding: clamp(24px, 5vw, 36px) clamp(16px, 4vw, 26px);
     }
     .hero-title {
-      font-size: clamp(32px, 6.5vw, 50px);
+      font-size: clamp(32px, 6.5vw, 48px);
       font-weight: 800;
       line-height: 1.05;
       margin: 0 0 10px 0;
@@ -250,17 +244,17 @@
       font-size: clamp(15px, 2.8vw, 18px);
       line-height: 1.5;
       margin: 0 auto 18px auto;
-      max-width: 540px;
+      max-width: 520px;
     }
     .home-choices {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-top: 20px;
+      margin-top: 18px;
       text-align: right;
     }
     .choice-card {
-      background: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.92);
       border: 1px solid var(--line);
       border-radius: 16px;
       padding: 16px 14px;
@@ -290,7 +284,7 @@
     .prompt-box {
       margin-top: 18px;
       padding: 12px 14px;
-      background: rgba(255,255,255,.7);
+      background: rgba(255,255,255,.75);
       border: 1px solid var(--line);
       border-radius: 14px;
       display: flex;
@@ -370,7 +364,7 @@
     .mask-thumb {
       aspect-ratio: 4 / 5;
       border-radius: 10px;
-      background: linear-gradient(135deg, #e5e7eb, #fff);
+      background: #ffffff;
       overflow: hidden;
       border: 1px solid var(--line);
       margin-bottom: 6px;
@@ -416,11 +410,12 @@
       border-radius: 18px;
       overflow: hidden;
       border: 1px solid var(--line);
-      background: linear-gradient(140deg, #d8d1c7, #fffdf8 56%, #bec8d0);
+      background: #ffffff;
       box-shadow: var(--shadow);
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
     }
     .prepare-preview-box canvas { width: 100%; height: 100%; display: block; }
     .prepare-info {
@@ -428,7 +423,28 @@
       width: 100%;
     }
     .prepare-info h2 { font-size: 20px; font-weight: 800; margin: 0 0 4px 0; }
-    .prepare-info p { color: var(--muted); font-size: 13.5px; margin: 0 0 12px 0; line-height: 1.45; }
+    .prepare-info p { color: var(--muted); font-size: 13.5px; margin: 0 0 10px 0; line-height: 1.45; }
+    
+    .zoom-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .zoom-btn {
+      min-height: 32px;
+      width: 32px;
+      padding: 0;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      font-size: 16px;
+      line-height: 1;
+    }
+
     .prepare-actions-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -451,11 +467,13 @@
       aspect-ratio: 3 / 4;
       border-radius: 16px;
       border: 1px solid var(--line);
+      background: #ffffff;
       overflow: hidden;
       box-shadow: var(--shadow);
       position: relative;
     }
     .creator-preview-box canvas { width: 100%; height: 100%; display: block; }
+    
     .source-buttons-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -464,7 +482,7 @@
     }
     .mode-pills {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1.2fr 1fr 1fr;
       gap: 5px;
       width: 100%;
       background: rgba(0,0,0,.05);
@@ -513,7 +531,7 @@
       margin-top: 4px;
     }
 
-    /* Camera Screen - Complete Fixed Fullscreen Layout */
+    /* Fixed Fullscreen Camera Screen */
     .camera-shell {
       position: fixed;
       top: 0;
@@ -550,7 +568,7 @@
       border: 1px solid rgba(255,255,255,.3);
       backdrop-filter: blur(8px);
       min-height: 36px;
-      padding: 6px 14px;
+      padding: 6px 12px;
       font-size: 13px;
     }
     .camera-title-badge {
@@ -561,6 +579,28 @@
     }
     .camera-title-badge strong { font-size: 14px; }
     .camera-title-badge small { font-size: 11px; opacity: .75; }
+
+    .cam-zoom-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(0,0,0,.4);
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.2);
+      font-size: 12px;
+    }
+    .cam-zoom-btn {
+      width: 26px;
+      height: 26px;
+      min-height: auto;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,.25);
+      color: #fff;
+      border: none;
+      font-size: 14px;
+    }
 
     .viewfinder {
       position: absolute;
@@ -683,7 +723,7 @@
 </head>
 <body>
 
-  <!-- Persistent Top Header -->
+  <!-- Persistent Top Header (Without Home icon) -->
   <header class="top-bar" id="globalTopBar">
     <div class="top-left">
       <button class="top-btn" id="topBackBtn" title="חזרה" aria-label="חזרה">
@@ -770,6 +810,13 @@
         <div class="prepare-info">
           <h2 id="prepareTitle">חלון עגול</h2>
           <p id="prepareText">מה נשאר גלוי ומה מוסתר? בחרו פריים שבו החלקים הגלויים מספרים משהו גם על מה שלא רואים.</p>
+          
+          <div class="zoom-toolbar">
+            <span>זום שקף:</span>
+            <button class="zoom-btn" id="prepareZoomOutBtn" title="הקטנת שקף">−</button>
+            <span id="prepareZoomLabel">100%</span>
+            <button class="zoom-btn" id="prepareZoomInBtn" title="הגדלת שקף">+</button>
+          </div>
         </div>
 
         <div class="prepare-actions-row">
@@ -803,27 +850,35 @@
           </button>
         </div>
 
-        <!-- 3 Modes: 1. Transparency slide (Woman Reference), 2. Soft Double Exposure, 3. Negative -->
+        <!-- 3 Modes: 1. Woman Reference style (Transparent skin/features ink), 2. Soft Double Exposure, 3. Solarized Negative -->
         <div class="mode-pills">
           <button class="mode-pill active" id="modeRefPositive" type="button">שקף שקוף (רפרנס)</button>
           <button class="mode-pill" id="modeSoftBlend" type="button">חשיפה כפולה</button>
-          <button class="mode-pill" id="modeNegative" type="button">נגטיב</button>
+          <button class="mode-pill" id="modeNegative" type="button">נגטיב אמנותי</button>
         </div>
 
         <div class="control-row">
           <label for="opacityRange">
-            <span>מעבר אור / שקיפות הפנים (שכבה פתוחה לעולם)</span>
-            <span id="opacityValue">80%</span>
+            <span>שקיפות הפנים (מעבר המצלמה דרך העור)</span>
+            <span id="opacityValue">75%</span>
           </label>
-          <input id="opacityRange" type="range" min="30" max="100" value="80" />
+          <input id="opacityRange" type="range" min="20" max="95" value="75" />
         </div>
 
         <div class="control-row">
           <label for="contrastRange">
-            <span>עוצמת תווי הפנים וקצוות (עיניים, שיער, תווי פנים)</span>
-            <span id="contrastValue">135%</span>
+            <span>עוצמת תווי הפנים (עיניים, שפתיים, שיער)</span>
+            <span id="contrastValue">150%</span>
           </label>
-          <input id="contrastRange" type="range" min="60" max="240" value="135" />
+          <input id="contrastRange" type="range" min="80" max="260" value="150" />
+        </div>
+
+        <div class="control-row">
+          <label for="bgThresholdRange">
+            <span>הסרת רקע (שקיפות הקיר שמאחור)</span>
+            <span id="bgThresholdValue">210</span>
+          </label>
+          <input id="bgThresholdRange" type="range" min="150" max="255" value="210" />
         </div>
 
         <div class="creator-actions-row">
@@ -879,10 +934,17 @@
         <svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         <span>חזרה</span>
       </button>
+
       <div class="camera-title-badge">
         <strong id="cameraMaskName">שקף</strong>
-        <small id="cameraFacingLabel">מצלמה אחורית</small>
+        <div class="cam-zoom-badge">
+          <span>זום:</span>
+          <button class="cam-zoom-btn" id="camZoomOutBtn">−</button>
+          <span id="camZoomLabel">100%</span>
+          <button class="cam-zoom-btn" id="camZoomInBtn">+</button>
+        </div>
       </div>
+
       <button id="cameraColorToggleBtn">
         <span class="color-dot black" id="camColorDot"></span>
         <span id="camColorLabel">שחור</span>
@@ -933,6 +995,7 @@
     let currentScreen = 'home';
     let maskColor = 'black'; // 'black' or 'white'
     let creatorMode = 'refPositive'; // 'refPositive', 'softBlend', 'negative'
+    let maskScale = 1.0; // Mask Zoom scale factor (0.6 to 1.6)
     let selectedMask = null;
     let personalMasks = [];
     let personalSourceImage = null;
@@ -977,26 +1040,53 @@
       'בחרו פריים שבו החלק החסר חשוב כמו החלק הגלוי.'
     ];
 
-    // Presets
+    // Presets with well-proportioned, unclipped responsive openings
     const masks = [
-      { id: 'frameCircle', name: 'חלון עגול', draw: (ctx,w,h,a,c) => { fill(ctx,w,h,a,c); holeCircle(ctx,w*.5,h*.5,Math.min(w,h)*.27); } },
-      { id: 'frameSquare', name: 'חלון מרובע', draw: (ctx,w,h,a,c) => { fill(ctx,w,h,a,c); clearRound(ctx,w*.2,h*.22,w*.6,h*.56,18); } },
+      { id: 'frameCircle', name: 'חלון עגול', draw: (ctx,w,h,a,c) => {
+          fill(ctx,w,h,a,c);
+          const r = Math.min(w,h) * 0.42;
+          holeCircle(ctx, w * 0.5, h * 0.5, r);
+        }
+      },
+      { id: 'frameSquare', name: 'חלון מרובע', draw: (ctx,w,h,a,c) => {
+          fill(ctx,w,h,a,c);
+          const size = Math.min(w,h) * 0.82;
+          clearRound(ctx, (w - size)/2, (h - size)/2, size, size, 24);
+        }
+      },
       { id: 'leftHalf', name: 'חצי שמאל מוסתר', draw: (ctx,w,h,a,c) => { rect(ctx,0,0,w*.5,h,a,c); } },
       { id: 'rightHalf', name: 'חצי ימין מוסתר', draw: (ctx,w,h,a,c) => { rect(ctx,w*.5,0,w*.5,h,a,c); } },
-      { id: 'topBand', name: 'שמיים מוסתרים', draw: (ctx,w,h,a,c) => { rect(ctx,0,0,w,h*.42,a,c); } },
-      { id: 'bottomBand', name: 'קרקע מוסתרת', draw: (ctx,w,h,a,c) => { rect(ctx,0,h*.58,w,h*.42,a,c); } },
-      { id: 'shutters', name: 'תריסים', draw: (ctx,w,h,a,c) => { for (let y=0; y<h; y+=h/8) rect(ctx,0,y,w,h/14,a,c); } },
-      { id: 'narrowSlit', name: 'פס ראייה', draw: (ctx,w,h,a,c) => { fill(ctx,w,h,a,c); clearRound(ctx,w*.12,h*.42,w*.76,h*.16,999); } },
+      { id: 'topBand', name: 'שמיים מוסתרים', draw: (ctx,w,h,a,c) => { rect(ctx,0,0,w,h*.40,a,c); } },
+      { id: 'bottomBand', name: 'קרקע מוסתרת', draw: (ctx,w,h,a,c) => { rect(ctx,0,h*.60,w,h*.40,a,c); } },
+      { id: 'shutters', name: 'תריסים', draw: (ctx,w,h,a,c) => { for (let y=0; y<h; y+=h/8) rect(ctx,0,y,w,h/16,a,c); } },
+      { id: 'narrowSlit', name: 'פס ראייה', draw: (ctx,w,h,a,c) => {
+          fill(ctx,w,h,a,c);
+          const sw = w * 0.90;
+          const sh = Math.min(w,h) * 0.32;
+          clearRound(ctx, (w - sw)/2, (h - sh)/2, sw, sh, 999);
+        }
+      },
       { id: 'diagonal', name: 'אלכסון', draw: (ctx,w,h,a,c) => {
           ctx.save(); ctx.globalAlpha=a; ctx.fillStyle = c === 'white' ? '#fff' : '#000';
-          ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(w*.68,0); ctx.lineTo(0,h*.68); ctx.closePath(); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(w,h); ctx.lineTo(w*.32,h); ctx.lineTo(w,h*.32); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(w*.65,0); ctx.lineTo(0,h*.65); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(w,h); ctx.lineTo(w*.35,h); ctx.lineTo(w,h*.35); ctx.closePath(); ctx.fill();
           ctx.restore();
         }
       },
-      { id: 'spots', name: 'כתמים', draw: (ctx,w,h,a,c) => { [[.2,.24,.16],[.68,.2,.12],[.78,.62,.18],[.34,.72,.14],[.52,.48,.1]].forEach(([x,y,r]) => blob(ctx,w*x,h*y,Math.min(w,h)*r,a,c)); } },
-      { id: 'centerBlock', name: 'מרכז מוסתר', draw: (ctx,w,h,a,c) => { clear(ctx,w,h); rect(ctx,w*.28,h*.25,w*.44,h*.5,a,c); } },
-      { id: 'twoWindows', name: 'שני חלונות', draw: (ctx,w,h,a,c) => { fill(ctx,w,h,a,c); holeCircle(ctx,w*.33,h*.42,Math.min(w,h)*.17); holeCircle(ctx,w*.67,h*.58,Math.min(w,h)*.17); } }
+      { id: 'spots', name: 'כתמים', draw: (ctx,w,h,a,c) => { [[.25,.26,.18],[.72,.22,.15],[.78,.62,.20],[.30,.72,.16],[.52,.48,.12]].forEach(([x,y,r]) => blob(ctx,w*x,h*y,Math.min(w,h)*r,a,c)); } },
+      { id: 'centerBlock', name: 'מרכז מוסתר', draw: (ctx,w,h,a,c) => {
+          clear(ctx,w,h);
+          const size = Math.min(w,h) * 0.55;
+          rect(ctx, (w - size)/2, (h - size)/2, size, size, a, c);
+        }
+      },
+      { id: 'twoWindows', name: 'שני חלונות', draw: (ctx,w,h,a,c) => {
+          fill(ctx,w,h,a,c);
+          const r = Math.min(w,h) * 0.22;
+          holeCircle(ctx, w*.32, h*.44, r);
+          holeCircle(ctx, w*.68, h*.56, r);
+        }
+      }
     ];
     selectedMask = masks[0];
 
@@ -1029,13 +1119,11 @@
         cameraShell.classList.remove('hidden');
         globalTopBar.classList.add('hidden');
         globalBottomNav.classList.add('hidden');
-        appMain.classList.add('in-camera');
         Object.keys(screens).forEach(k => screens[k].classList.remove('active'));
       } else {
         cameraShell.classList.add('hidden');
         globalTopBar.classList.remove('hidden');
         globalBottomNav.classList.remove('hidden');
-        appMain.classList.remove('in-camera');
         stopCamera();
 
         Object.keys(screens).forEach(key => {
@@ -1064,7 +1152,6 @@
       navigateTo(target, false);
     });
 
-    // Initialize History on first load
     if (!history.state?.screen) {
       history.replaceState({ screen: 'home' }, '', '#home');
     }
@@ -1110,6 +1197,21 @@
     topColorToggleBtn.addEventListener('click', toggleMaskColor);
     document.getElementById('cameraColorToggleBtn').addEventListener('click', toggleMaskColor);
 
+    // --- Zoom Controls ---
+    function setMaskScale(newScale) {
+      maskScale = Math.max(0.6, Math.min(1.6, Math.round(newScale * 10) / 10));
+      const label = `${Math.round(maskScale * 100)}%`;
+      document.getElementById('prepareZoomLabel').textContent = label;
+      document.getElementById('camZoomLabel').textContent = label;
+      if (currentScreen === 'prepare') updatePreparePreview();
+      if (currentScreen === 'camera') sizeOverlay();
+    }
+
+    document.getElementById('prepareZoomInBtn').addEventListener('click', () => setMaskScale(maskScale + 0.1));
+    document.getElementById('prepareZoomOutBtn').addEventListener('click', () => setMaskScale(maskScale - 0.1));
+    document.getElementById('camZoomInBtn').addEventListener('click', () => setMaskScale(maskScale + 0.1));
+    document.getElementById('camZoomOutBtn').addEventListener('click', () => setMaskScale(maskScale - 0.1));
+
     // --- Home Screen Actions ---
     document.getElementById('homeStartBtn').addEventListener('click', () => navigateTo('gallery'));
     document.getElementById('homeCreatorBtn').addEventListener('click', () => navigateTo('creator'));
@@ -1131,13 +1233,21 @@
     async function loadPersonalMasks() {
       try {
         const db = await openDb();
-        personalMasks = await new Promise((resolve, reject) => {
+        const records = await new Promise((resolve, reject) => {
           const tx = db.transaction(STORE_NAME, 'readonly');
           const request = tx.objectStore(STORE_NAME).getAll();
           request.onsuccess = () => resolve(request.result.sort((a, b) => b.createdAt - a.createdAt));
           request.onerror = () => reject(request.error);
         });
         db.close();
+
+        // Ensure all images are preloaded
+        for (const r of records) {
+          if (r.dataUrl) {
+            r.image = await loadImage(r.dataUrl);
+          }
+        }
+        personalMasks = records;
       } catch (e) {
         personalMasks = [];
       }
@@ -1147,7 +1257,16 @@
       const db = await openDb();
       await new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).put(mask);
+        tx.objectStore(STORE_NAME).put({
+          id: mask.id,
+          type: mask.type,
+          name: mask.name,
+          createdAt: mask.createdAt,
+          dataUrl: mask.dataUrl,
+          opacity: mask.opacity,
+          contrast: mask.contrast,
+          mode: mask.mode
+        });
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error);
       });
@@ -1168,6 +1287,15 @@
       db.close();
       await loadPersonalMasks();
       renderMaskGrid();
+    }
+
+    // --- Clean Neutral White Background ---
+    function renderCleanWhiteBackground(ctx, w, h) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#e5e0d8';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(1, 1, w - 2, h - 2);
     }
 
     // --- Drawing Primitives (Black or White) ---
@@ -1214,15 +1342,33 @@
     }
 
     function drawMask(ctx, w, h, mask = selectedMask, alpha = 1) {
-      ctx.clearRect(0,0,w,h);
+      ctx.clearRect(0, 0, w, h);
       if (!mask) return;
-      if (mask.type === 'personal-custom' && mask.image) {
-        drawImageCover(ctx, mask.image, w, h, alpha);
+
+      ctx.save();
+      if (maskScale !== 1) {
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(maskScale, maskScale);
+        ctx.translate(-w / 2, -h / 2);
+      }
+
+      if (mask.type === 'personal-custom') {
+        if (mask.image) {
+          drawImageCover(ctx, mask.image, w, h, alpha);
+        } else if (mask.dataUrl) {
+          loadImage(mask.dataUrl).then(img => {
+            mask.image = img;
+            drawImageCover(ctx, img, w, h, alpha);
+          });
+        }
+        ctx.restore();
         return;
       }
+
       if (mask.draw) {
         mask.draw(ctx, w, h, alpha, maskColor);
       }
+      ctx.restore();
     }
 
     function createMaskCanvas(w, h, mask = selectedMask, alpha = 1) {
@@ -1271,8 +1417,9 @@
         grid.appendChild(label);
 
         for (const personal of personalMasks) {
-          const image = await loadImage(personal.dataUrl);
-          personal.image = image;
+          if (!personal.image && personal.dataUrl) {
+            personal.image = await loadImage(personal.dataUrl);
+          }
           const card = document.createElement('div');
           card.className = 'mask-card' + (selectedMask && selectedMask.id === personal.id ? ' selected' : '');
           card.innerHTML = `
@@ -1283,7 +1430,11 @@
             <div class="mask-name">${personal.name}</div>
           `;
           const canvas = card.querySelector('canvas');
-          drawImageCover(canvas.getContext('2d'), image, canvas.width, canvas.height, 1);
+          const cCtx = canvas.getContext('2d');
+          renderCleanWhiteBackground(cCtx, canvas.width, canvas.height);
+          if (personal.image) {
+            drawImageCover(cCtx, personal.image, canvas.width, canvas.height, 1);
+          }
 
           card.querySelector('.delete-mask-btn').addEventListener('click', (e) => deletePersonalMask(personal.id, e));
           card.addEventListener('click', () => {
@@ -1308,7 +1459,9 @@
           <div class="mask-name">${mask.name}</div>
         `;
         const canvas = card.querySelector('canvas');
-        mask.draw(canvas.getContext('2d'), canvas.width, canvas.height, 1, maskColor);
+        const cCtx = canvas.getContext('2d');
+        renderCleanWhiteBackground(cCtx, canvas.width, canvas.height);
+        mask.draw(cCtx, canvas.width, canvas.height, 1, maskColor);
         card.addEventListener('click', () => {
           selectedMask = { ...mask, type: 'preset' };
           navigateTo('prepare');
@@ -1330,50 +1483,18 @@
         : 'מה נשאר גלוי ומה מוסתר? בחרו פריים שבו החלקים הגלויים מספרים משהו גם על מה שלא רואים.';
 
       preparePreviewCtx.clearRect(0, 0, preparePreview.width, preparePreview.height);
-      renderScenicSampleBackground(preparePreviewCtx, preparePreview.width, preparePreview.height);
+      renderCleanWhiteBackground(preparePreviewCtx, preparePreview.width, preparePreview.height);
       drawMask(preparePreviewCtx, preparePreview.width, preparePreview.height, selectedMask, 1);
-    }
-
-    // Realistic Landscape Simulation Background (Sky, Mountains, Sun) so user sees the transparency effect immediately!
-    function renderScenicSampleBackground(ctx, w, h) {
-      // Sky gradient
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.7);
-      skyGrad.addColorStop(0, '#7494b8');
-      skyGrad.addColorStop(0.5, '#a4bfd8');
-      skyGrad.addColorStop(1, '#dfeaf3');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, w, h * 0.7);
-
-      // Clouds / Light
-      ctx.save();
-      ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.beginPath();
-      ctx.ellipse(w * 0.45, h * 0.35, w * 0.45, h * 0.18, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Distant mountains / Landscape
-      const groundGrad = ctx.createLinearGradient(0, h * 0.6, 0, h);
-      groundGrad.addColorStop(0, '#60725a');
-      groundGrad.addColorStop(0.5, '#3e4d3a');
-      groundGrad.addColorStop(1, '#273325');
-      ctx.fillStyle = groundGrad;
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.65);
-      ctx.bezierCurveTo(w * 0.3, h * 0.58, w * 0.6, h * 0.7, w, h * 0.62);
-      ctx.lineTo(w, h);
-      ctx.lineTo(0, h);
-      ctx.closePath();
-      ctx.fill();
     }
 
     document.getElementById('continueToCameraBtn').addEventListener('click', () => startCamera());
     document.getElementById('backToGalleryFromPrepareBtn').addEventListener('click', () => navigateTo('gallery'));
 
-    // --- Custom Mask Creator Algorithm (Point 10 - Woman Reference Physical Transparency) ---
+    // --- Custom Mask Creator Algorithm (Refined Woman Style) ---
     function processCustomMask(sourceImage, width = 720, height = 960) {
       const opacityVal = Number(document.getElementById('opacityRange').value) / 100;
       const contrastVal = Number(document.getElementById('contrastRange').value) / 100;
+      const bgThreshold = Number(document.getElementById('bgThresholdRange').value);
       const isWhiteMask = (maskColor === 'white');
 
       const canvas = document.createElement('canvas');
@@ -1391,49 +1512,76 @@
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
-        const gray = r * .299 + g * .587 + b * .114;
-        let adj = ((gray - 128) * contrastVal) + 128;
-        adj = Math.max(0, Math.min(255, adj));
+        const rawGray = r * .299 + g * .587 + b * .114;
 
         if (creatorMode === 'refPositive') {
-          // MODE 1: Exact physical simulation of printed transparent slide (Woman Reference)
-          // The face skin and light wall/sky become highly transparent so the outside world flows inside through the face.
-          // The darker features (eyes, eyebrows, beard, lips, hair, contours, lace) stay as dark ink with clear opacity!
-          const normalized = adj / 255;
-          // Power curve: makes light areas (skin > 0.45) drop to near-zero opacity (letting camera through!),
-          // while dark features (< 0.3) remain solid ink lines.
-          const featureStrength = Math.pow(1 - normalized, 1.85);
-          const alpha = featureStrength * opacityVal * 255;
+          // --- MODE 1: Woman Reference Style ---
+          // 1. Background Wall Knockout:
+          // If the pixel is as bright as the background wall (> bgThreshold), it fades to 0 opacity.
+          if (rawGray >= bgThreshold) {
+            data[i + 3] = 0;
+            continue;
+          }
+
+          // 2. Feature extraction with contrast boost
+          let adj = ((rawGray - 120) * contrastVal) + 120;
+          adj = Math.max(0, Math.min(255, adj));
+
+          const norm = adj / 255;
+          // Features (hair, dark eyebrows, beard, lips, contours < 0.38) stay solid ink.
+          // Face skin (0.4 to 0.82) has high light pass-through (low alpha) so the camera shines through.
+          let alpha;
+          if (norm < 0.38) {
+            // Dark facial features / edges
+            alpha = (0.75 + (1 - norm) * 0.25) * opacityVal * 255;
+          } else {
+            // Skin midtones (cheeks, forehead, nose)
+            const skinFade = Math.pow((1 - norm) / 0.62, 2.2);
+            alpha = skinFade * (opacityVal * 0.45) * 255;
+          }
 
           if (isWhiteMask) {
             data[i] = 255;
             data[i + 1] = 255;
             data[i + 2] = 255;
           } else {
-            // Charcoal photographic ink tone
-            const inkTone = Math.round(adj * 0.18);
-            data[i] = inkTone;
-            data[i + 1] = inkTone;
-            data[i + 2] = inkTone;
+            // Rich photographic charcoal ink
+            const ink = Math.round(norm * 25);
+            data[i] = ink;
+            data[i + 1] = ink;
+            data[i + 2] = ink;
           }
           data[i + 3] = Math.max(0, Math.min(255, Math.round(alpha)));
 
         } else if (creatorMode === 'softBlend') {
-          // MODE 2: Soft Double Exposure (Holographic portrait blend)
-          const tone = isWhiteMask ? Math.round(255 - (255 - adj) * 0.4) : Math.round(adj * 0.75);
+          // --- MODE 2: Soft Double Exposure ---
+          if (rawGray >= bgThreshold + 10) {
+            data[i + 3] = 0;
+            continue;
+          }
+          const tone = isWhiteMask ? 255 : Math.round(rawGray * 0.75);
           data[i] = tone;
           data[i + 1] = tone;
           data[i + 2] = tone;
-          data[i + 3] = Math.max(0, Math.min(255, Math.round(opacityVal * 160)));
+          data[i + 3] = Math.max(0, Math.min(255, Math.round(opacityVal * 140)));
 
         } else {
-          // MODE 3: Negative Slide
-          let neg = 255 - adj;
-          const alpha = opacityVal * (35 + neg * .75);
-          data[i] = neg;
-          data[i + 1] = neg;
-          data[i + 2] = neg;
-          data[i + 3] = Math.max(0, Math.min(240, Math.round(alpha)));
+          // --- MODE 3: Solarized Artistic Negative ---
+          // Soft solarized inversion (eyes and dark contours preserved!)
+          if (rawGray >= bgThreshold) {
+            data[i + 3] = 0;
+            continue;
+          }
+          let inverted = 255 - rawGray;
+          // Protect deep darks from blooming into alien white eyes:
+          if (rawGray < 45) {
+            inverted = 40; // Anchored dark pupils/brows
+          }
+          const alpha = opacityVal * (30 + (inverted / 255) * 200);
+          data[i] = inverted;
+          data[i + 1] = inverted;
+          data[i + 2] = inverted;
+          data[i + 3] = Math.max(0, Math.min(255, Math.round(alpha)));
         }
       }
 
@@ -1444,15 +1592,17 @@
     function updateCreatorPreview() {
       const op = document.getElementById('opacityRange').value;
       const co = document.getElementById('contrastRange').value;
+      const bg = document.getElementById('bgThresholdRange').value;
       document.getElementById('opacityValue').textContent = `${op}%`;
       document.getElementById('contrastValue').textContent = `${co}%`;
+      document.getElementById('bgThresholdValue').textContent = `${bg}`;
 
       personalPreviewCtx.clearRect(0, 0, personalPreview.width, personalPreview.height);
-      renderScenicSampleBackground(personalPreviewCtx, personalPreview.width, personalPreview.height);
+      renderCleanWhiteBackground(personalPreviewCtx, personalPreview.width, personalPreview.height);
 
       if (!personalSourceImage) {
-        personalPreviewCtx.fillStyle = 'rgba(23,23,23,.7)';
-        personalPreviewCtx.font = '700 28px Assistant, Open Sans, sans-serif';
+        personalPreviewCtx.fillStyle = 'rgba(23,23,23,.6)';
+        personalPreviewCtx.font = '700 26px Assistant, Open Sans, sans-serif';
         personalPreviewCtx.textAlign = 'center';
         personalPreviewCtx.fillText('בחרו או צלמו תמונה ליצירת שקף', personalPreview.width / 2, personalPreview.height / 2);
         return;
@@ -1481,6 +1631,7 @@
 
     document.getElementById('opacityRange').addEventListener('input', updateCreatorPreview);
     document.getElementById('contrastRange').addEventListener('input', updateCreatorPreview);
+    document.getElementById('bgThresholdRange').addEventListener('input', updateCreatorPreview);
 
     async function handleSourceFile(file) {
       if (!file) return;
@@ -1514,6 +1665,8 @@
         contrast: Number(document.getElementById('contrastRange').value),
         mode: creatorMode
       };
+      // Preload image before navigation
+      mask.image = await loadImage(personalDraftDataUrl);
       await savePersonalMask(mask);
       selectedMask = mask;
       navigateTo('prepare');
@@ -1549,6 +1702,11 @@
       document.getElementById('cameraMaskName').textContent = selectedMask.name;
       document.getElementById('cameraFacingLabel').textContent = cameraFacingMode === 'environment' ? 'מצלמה אחורית' : 'מצלמה קדמית';
       document.getElementById('cameraError').style.display = 'none';
+
+      // Ensure personal mask image is loaded
+      if (selectedMask.type === 'personal-custom' && !selectedMask.image && selectedMask.dataUrl) {
+        selectedMask.image = await loadImage(selectedMask.dataUrl);
+      }
 
       try {
         stopCamera();
