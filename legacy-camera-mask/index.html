@@ -26,6 +26,7 @@
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
+    html { overscroll-behavior-x: none; }
     body {
       margin: 0;
       font-family: "Open Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
@@ -35,6 +36,8 @@
         radial-gradient(circle at 86% 20%, rgba(168,154,136,.22), transparent 28%),
         linear-gradient(135deg, #f7f3ed 0%, #fbfaf7 52%, #eee8df 100%);
       min-height: 100%;
+      overscroll-behavior-x: none;
+      overscroll-behavior-y: contain;
     }
     button, textarea, input { font: inherit; }
     button {
@@ -189,6 +192,24 @@
       color: var(--muted);
       font-size: 14px;
       font-weight: 800;
+    }
+    .personal-actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: center;
+    }
+    .delete-mask {
+      min-height: 34px;
+      width: 34px;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,.74);
+      border: 1px solid var(--line);
+      color: #7f1d1d;
+      box-shadow: none;
+      font-size: 18px;
+      line-height: 1;
     }
     .creator-grid {
       display: grid;
@@ -429,7 +450,10 @@
           <h2 id="galleryTitle">בחרו שקף</h2>
           <p class="hint">השקף השחור יישאר מעל המצלמה. רק החלקים הבהירים יישארו גלויים בצילום.</p>
         </div>
-        <button class="ghost" id="backToPromptBtn">חזרה להנחיה</button>
+        <div class="actions" style="margin-top:0">
+          <button class="primary" id="newMaskFromGalleryBtn">יצירת שקף חדש</button>
+          <button class="ghost" id="backToPromptBtn">חזרה</button>
+        </div>
       </div>
       <div class="mask-grid" id="maskGrid"></div>
     </section>
