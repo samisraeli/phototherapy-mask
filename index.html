@@ -952,7 +952,7 @@
     </div>
 
     <div class="viewfinder">
-      <video id="video" autoplay playsinline muted></video>
+      <video id="video" autoplay playsinline webkit-playsinline muted></video>
       <canvas id="cameraOverlay" aria-hidden="true"></canvas>
       <div class="camera-error-badge" id="cameraError">
         <strong>לא הצלחתי לפתוח מצלמה</strong>
@@ -1690,35 +1690,80 @@
     // --- Camera Screen Logic ---
     function sizeOverlay() {
       const rect = overlay.getBoundingClientRect();
+      const w = Math.round(rect.width || window.innerWidth || 360);
+      const h = Math.round(rect.height || window.innerHeight || 640);
+      if (w <= 0 || h <= 0) return;
       const dpr = window.devicePixelRatio || 1;
-      overlay.width = Math.max(1, Math.round(rect.width * dpr));
-      overlay.height = Math.max(1, Math.round(rect.height * dpr));
+      overlay.width = Math.round(w * dpr);
+      overlay.height = Math.round(h * dpr);
       overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      drawMask(overlayCtx, rect.width, rect.height, selectedMask, 1);
+      drawMask(overlayCtx, w, h, selectedMask, 1);
     }
 
     async function startCamera() {
       navigateTo('camera');
-      document.getElementById('cameraMaskName').textContent = selectedMask.name;
-      document.getElementById('cameraFacingLabel').textContent = cameraFacingMode === 'environment' ? 'מצלמה אחורית' : 'מצלמה קדמית';
-      document.getElementById('cameraError').style.display = 'none';
+      if (!selectedMask) selectedMask = masks[0];
 
-      // Ensure personal mask image is loaded
-      if (selectedMask.type === 'personal-custom' && !selectedMask.image && selectedMask.dataUrl) {
-        selectedMask.image = await loadImage(selectedMask.dataUrl);
+      const maskNameEl = document.getElementById('cameraMaskName');
+      if (maskNameEl) maskNameEl.textContent = selectedMask.name;
+
+      const switchBtn = document.getElementById('switchCameraBtn');
+      if (switchBtn) {
+        switchBtn.title = cameraFacingMode === 'environment' ? 'מעבר למצלמה קדמית' : 'מעבר למצלמה אחורית';
       }
 
+      const camErrorEl = document.getElementById('cameraError');
+      if (camErrorEl) camErrorEl.style.display = 'none';
+
+      // 1. Render mask overlay immediately so screen is never empty/black
+      sizeOverlay();
+
+      // 2. Ensure personal mask image is loaded in memory
+      if (selectedMask.type === 'personal-custom' && !selectedMask.image && selectedMask.dataUrl) {
+        try {
+          selectedMask.image = await loadImage(selectedMask.dataUrl);
+          sizeOverlay();
+        } catch (e) {
+          console.warn('Personal mask image preload failed:', e);
+        }
+      }
+
+      // 3. Request camera stream with fallback constraints
       try {
         stopCamera();
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: cameraFacingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false
-        });
+        let mediaStream;
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: cameraFacingMode },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
+            },
+            audio: false
+          });
+        } catch (initialErr) {
+          // Fallback if specific resolution or facingMode constraint fails
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        }
+
+        stream = mediaStream;
         video.srcObject = stream;
-        await video.play();
+        try {
+          await video.play();
+        } catch (playErr) {
+          console.warn('Video play warning:', playErr);
+        }
+
+        video.onloadedmetadata = () => sizeOverlay();
+        sizeOverlay();
         requestAnimationFrame(sizeOverlay);
+        setTimeout(sizeOverlay, 120);
       } catch (err) {
-        document.getElementById('cameraError').style.display = 'block';
+        console.error('Camera stream error:', err);
+        if (camErrorEl) camErrorEl.style.display = 'block';
       }
     }
 
@@ -1781,6 +1826,11 @@
     document.getElementById('captureBtn').addEventListener('click', capture);
     window.addEventListener('resize', () => {
       if (currentScreen === 'camera') sizeOverlay();
+    });
+    window.addEventListener('orientationchange', () => {
+      if (currentScreen === 'camera') {
+        setTimeout(sizeOverlay, 200);
+      }
     });
 
     // --- Result Screen ---
