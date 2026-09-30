@@ -680,21 +680,130 @@
       margin: 0 auto;
     }
     .result-image-box {
-      width: min(100%, 320px);
-      max-height: 45vh;
+      width: 100%;
+      max-width: 320px;
+      height: 48vh;
       border-radius: 18px;
-      background: #111;
+      background: #0b0f19;
       box-shadow: var(--shadow);
       border: 1px solid var(--line);
       overflow: hidden;
       display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      padding: 6px;
     }
-    .result-image-box img { width: 100%; height: 100%; object-fit: contain; }
+    .result-image-box img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
+      border-radius: 12px;
+    }
+    .zoom-hint-badge {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(0,0,0,.65);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 6px rgba(0,0,0,.3);
+    }
     .result-actions-row {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
       width: 100%;
+    }
+    .saved-success {
+      background: #15803d !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 14px rgba(21,128,61,.35) !important;
+      transition: background-color .2s ease, transform .1s ease !important;
+    }
+    .app-toast {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-30px);
+      background: rgba(17, 24, 39, .95);
+      color: #ffffff;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 10px 30px rgba(0,0,0,.3);
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease, transform .25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,255,255,.2);
+      backdrop-filter: blur(8px);
+    }
+    .app-toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .lightbox-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.92);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(10px);
+      animation: fadeIn .15s ease;
+    }
+    .lightbox-modal.hidden { display: none !important; }
+    .lightbox-content {
+      position: relative;
+      max-width: 95vw;
+      max-height: 92dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox-content img {
+      max-width: 100%;
+      max-height: 90dvh;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.6);
+    }
+    .lightbox-close-btn {
+      position: absolute;
+      top: -12px;
+      right: -12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #111;
+      font-weight: 800;
+      font-size: 16px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,.35);
     }
     .reflection-note {
       width: 100%;
@@ -900,8 +1009,11 @@
     <!-- 6. Result Screen (תוצאה) -->
     <section class="screen" id="resultScreen">
       <div class="card result-layout">
-        <div class="result-image-box">
+        <div class="result-image-box" id="resultImageBox" title="לחצו להגדלה על מסך מלא">
           <img id="resultImage" alt="התמונה שצולמה דרך השקף" />
+          <div class="zoom-hint-badge" title="הגדלה">
+            <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+          </div>
         </div>
 
         <div class="reflection-note">
@@ -926,6 +1038,16 @@
     </section>
 
   </main>
+
+  <!-- Fullscreen Lightbox Modal -->
+  <div class="lightbox-modal hidden" id="lightboxModal">
+    <div class="lightbox-content">
+      <img id="lightboxImage" alt="תצוגת צילום מלאה" />
+      <button class="lightbox-close-btn" id="lightboxCloseBtn" title="סגירה" aria-label="סגירה">✕</button>
+    </div>
+  </div>
+
+  <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
 
   <!-- 5. Standalone Fixed Fullscreen Camera Screen -->
   <div class="camera-shell hidden" id="cameraShell">
@@ -1040,49 +1162,59 @@
       'בחרו פריים שבו החלק החסר חשוב כמו החלק הגלוי.'
     ];
 
-    // Presets with well-proportioned, unclipped responsive openings
+    // Presets with well-proportioned, responsive openings (Border ALWAYS fills whole frame!)
     const masks = [
-      { id: 'frameCircle', name: 'חלון עגול', draw: (ctx,w,h,a,c) => {
+      { id: 'frameCircle', name: 'חלון עגול', draw: (ctx,w,h,a,c,scale=1) => {
           fill(ctx,w,h,a,c);
-          const r = Math.min(w,h) * 0.42;
+          const r = Math.min(w,h) * 0.42 * scale;
           holeCircle(ctx, w * 0.5, h * 0.5, r);
         }
       },
-      { id: 'frameSquare', name: 'חלון מרובע', draw: (ctx,w,h,a,c) => {
+      { id: 'frameSquare', name: 'חלון מרובע', draw: (ctx,w,h,a,c,scale=1) => {
           fill(ctx,w,h,a,c);
-          const size = Math.min(w,h) * 0.82;
+          const size = Math.min(w,h) * 0.82 * scale;
           clearRound(ctx, (w - size)/2, (h - size)/2, size, size, 24);
         }
       },
-      { id: 'leftHalf', name: 'חצי שמאל מוסתר', draw: (ctx,w,h,a,c) => { rect(ctx,0,0,w*.5,h,a,c); } },
-      { id: 'rightHalf', name: 'חצי ימין מוסתר', draw: (ctx,w,h,a,c) => { rect(ctx,w*.5,0,w*.5,h,a,c); } },
-      { id: 'topBand', name: 'שמיים מוסתרים', draw: (ctx,w,h,a,c) => { rect(ctx,0,0,w,h*.40,a,c); } },
-      { id: 'bottomBand', name: 'קרקע מוסתרת', draw: (ctx,w,h,a,c) => { rect(ctx,0,h*.60,w,h*.40,a,c); } },
-      { id: 'shutters', name: 'תריסים', draw: (ctx,w,h,a,c) => { for (let y=0; y<h; y+=h/8) rect(ctx,0,y,w,h/16,a,c); } },
-      { id: 'narrowSlit', name: 'פס ראייה', draw: (ctx,w,h,a,c) => {
+      { id: 'leftHalf', name: 'חצי שמאל מוסתר', draw: (ctx,w,h,a,c,scale=1) => { rect(ctx,0,0,w*Math.min(1, 0.5*scale),h,a,c); } },
+      { id: 'rightHalf', name: 'חצי ימין מוסתר', draw: (ctx,w,h,a,c,scale=1) => { const rw = w*Math.min(1, 0.5*scale); rect(ctx,w-rw,0,rw,h,a,c); } },
+      { id: 'topBand', name: 'שמיים מוסתרים', draw: (ctx,w,h,a,c,scale=1) => { rect(ctx,0,0,w,h*Math.min(1, 0.40*scale),a,c); } },
+      { id: 'bottomBand', name: 'קרקע מוסתרת', draw: (ctx,w,h,a,c,scale=1) => { const bh = h*Math.min(1, 0.40*scale); rect(ctx,0,h-bh,w,bh,a,c); } },
+      { id: 'shutters', name: 'תריסים', draw: (ctx,w,h,a,c,scale=1) => {
+          const count = Math.max(4, Math.round(8 / scale));
+          const step = h / count;
+          for (let y=0; y<h; y+=step) rect(ctx,0,y,w,step*0.5,a,c);
+        }
+      },
+      { id: 'narrowSlit', name: 'פס ראייה', draw: (ctx,w,h,a,c,scale=1) => {
           fill(ctx,w,h,a,c);
-          const sw = w * 0.90;
-          const sh = Math.min(w,h) * 0.32;
+          const sw = Math.min(w * 0.96, w * 0.90 * scale);
+          const sh = Math.min(h * 0.90, Math.min(w,h) * 0.32 * scale);
           clearRound(ctx, (w - sw)/2, (h - sh)/2, sw, sh, 999);
         }
       },
-      { id: 'diagonal', name: 'אלכסון', draw: (ctx,w,h,a,c) => {
+      { id: 'diagonal', name: 'אלכסון', draw: (ctx,w,h,a,c,scale=1) => {
           ctx.save(); ctx.globalAlpha=a; ctx.fillStyle = c === 'white' ? '#fff' : '#000';
-          ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(w*.65,0); ctx.lineTo(0,h*.65); ctx.closePath(); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(w,h); ctx.lineTo(w*.35,h); ctx.lineTo(w,h*.35); ctx.closePath(); ctx.fill();
+          const d1 = Math.min(w, w * 0.65 * scale);
+          const d2 = Math.min(h, h * 0.65 * scale);
+          ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(d1,0); ctx.lineTo(0,d2); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(w,h); ctx.lineTo(w - d1*0.55, h); ctx.lineTo(w, h - d2*0.55); ctx.closePath(); ctx.fill();
           ctx.restore();
         }
       },
-      { id: 'spots', name: 'כתמים', draw: (ctx,w,h,a,c) => { [[.25,.26,.18],[.72,.22,.15],[.78,.62,.20],[.30,.72,.16],[.52,.48,.12]].forEach(([x,y,r]) => blob(ctx,w*x,h*y,Math.min(w,h)*r,a,c)); } },
-      { id: 'centerBlock', name: 'מרכז מוסתר', draw: (ctx,w,h,a,c) => {
+      { id: 'spots', name: 'כתמים', draw: (ctx,w,h,a,c,scale=1) => {
+          [[.25,.26,.18],[.72,.22,.15],[.78,.62,.20],[.30,.72,.16],[.52,.48,.12]].forEach(([x,y,r]) => blob(ctx,w*x,h*y,Math.min(w,h)*r*scale,a,c));
+        }
+      },
+      { id: 'centerBlock', name: 'מרכז מוסתר', draw: (ctx,w,h,a,c,scale=1) => {
           clear(ctx,w,h);
-          const size = Math.min(w,h) * 0.55;
+          const size = Math.min(w,h) * 0.55 * scale;
           rect(ctx, (w - size)/2, (h - size)/2, size, size, a, c);
         }
       },
-      { id: 'twoWindows', name: 'שני חלונות', draw: (ctx,w,h,a,c) => {
+      { id: 'twoWindows', name: 'שני חלונות', draw: (ctx,w,h,a,c,scale=1) => {
           fill(ctx,w,h,a,c);
-          const r = Math.min(w,h) * 0.22;
+          const r = Math.min(w,h) * 0.22 * scale;
           holeCircle(ctx, w*.32, h*.44, r);
           holeCircle(ctx, w*.68, h*.56, r);
         }
@@ -1345,20 +1477,19 @@
       ctx.clearRect(0, 0, w, h);
       if (!mask) return;
 
-      ctx.save();
-      if (maskScale !== 1) {
-        ctx.translate(w / 2, h / 2);
-        ctx.scale(maskScale, maskScale);
-        ctx.translate(-w / 2, -h / 2);
-      }
-
       if (mask.type === 'personal-custom') {
+        ctx.save();
+        if (maskScale !== 1) {
+          ctx.translate(w / 2, h / 2);
+          ctx.scale(maskScale, maskScale);
+          ctx.translate(-w / 2, -h / 2);
+        }
         if (mask.image) {
           drawImageCover(ctx, mask.image, w, h, alpha);
         } else if (mask.dataUrl) {
           loadImage(mask.dataUrl).then(img => {
             mask.image = img;
-            drawImageCover(ctx, img, w, h, alpha);
+            sizeOverlay();
           });
         }
         ctx.restore();
@@ -1366,9 +1497,8 @@
       }
 
       if (mask.draw) {
-        mask.draw(ctx, w, h, alpha, maskColor);
+        mask.draw(ctx, w, h, alpha, maskColor, maskScale);
       }
-      ctx.restore();
     }
 
     function createMaskCanvas(w, h, mask = selectedMask, alpha = 1) {
@@ -1833,11 +1963,48 @@
       }
     });
 
+    // --- Toast & Feedback ---
+    function showToast(message) {
+      let toast = document.getElementById('appToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'appToast';
+        toast.className = 'app-toast';
+        document.body.appendChild(toast);
+      }
+      toast.innerHTML = `
+        <svg class="icon-svg" style="width:18px;height:18px;stroke:#4ade80;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>${message}</span>
+      `;
+      toast.classList.add('visible');
+      if (navigator.vibrate) {
+        try { navigator.vibrate([40, 30, 40]); } catch(e){}
+      }
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 2600);
+    }
+
     // --- Result Screen ---
     function downloadImage() {
       if (!imageBlob) return;
       const url = URL.createObjectURL(imageBlob);
       downloadDataUrl(url, `shekef-photo-${Date.now()}.png`);
+
+      const btn = document.getElementById('downloadBtn');
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = `
+        <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>נשמר במכשיר!</span>
+      `;
+      btn.classList.add('saved-success');
+      showToast('התמונה נשמרה בהצלחה במכשיר!');
+
+      setTimeout(() => {
+        btn.innerHTML = originalHtml;
+        btn.classList.remove('saved-success');
+      }, 2500);
     }
 
     async function shareImage() {
@@ -1855,6 +2022,31 @@
       } else {
         downloadImage();
       }
+    }
+
+    // Lightbox modal interaction
+    const resultImageBox = document.getElementById('resultImageBox');
+    const lightboxModal = document.getElementById('lightboxModal');
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
+
+    if (resultImageBox && lightboxModal && lightboxImage) {
+      resultImageBox.addEventListener('click', () => {
+        const src = document.getElementById('resultImage').src;
+        if (src) {
+          lightboxImage.src = src;
+          lightboxModal.classList.remove('hidden');
+        }
+      });
+      if (lightboxCloseBtn) {
+        lightboxCloseBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          lightboxModal.classList.add('hidden');
+        });
+      }
+      lightboxModal.addEventListener('click', () => {
+        lightboxModal.classList.add('hidden');
+      });
     }
 
     document.getElementById('downloadBtn').addEventListener('click', downloadImage);
