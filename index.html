@@ -27,6 +27,35 @@
       appId: "1:673735734959:web:051a1efaafab48907d065a"
     };
 
+    const FIRESTORE_REST_BASE = "https://firestore.googleapis.com/v1/projects/phototherapy-mask/databases/(default)/documents/app_config/general";
+
+    function parseFirestoreDoc(docObj) {
+      if (!docObj || !docObj.fields) return null;
+      const res = {};
+      for (const [k, v] of Object.entries(docObj.fields)) {
+        if ('stringValue' in v) res[k] = v.stringValue;
+        else if ('booleanValue' in v) res[k] = v.booleanValue;
+        else if ('integerValue' in v) res[k] = parseInt(v.integerValue, 10);
+        else if ('arrayValue' in v) {
+          res[k] = (v.arrayValue.values || []).map(item => item.stringValue || item);
+        }
+      }
+      return res;
+    }
+
+    function toFirestoreFields(obj) {
+      const fields = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === 'boolean') fields[k] = { booleanValue: v };
+        else if (typeof v === 'number') fields[k] = { integerValue: String(v) };
+        else if (typeof v === 'string') fields[k] = { stringValue: v };
+        else if (Array.isArray(v)) {
+          fields[k] = { arrayValue: { values: v.map(x => ({ stringValue: String(x) })) } };
+        }
+      }
+      return { fields };
+    }
+
     const app = initializeApp(firebaseConfig);
     let db = null;
     let auth = null;
@@ -34,52 +63,121 @@
       db = getFirestore(app);
       auth = getAuth(app);
     } catch(err) {
-      console.warn("Firestore/Auth init:", err);
+      console.warn("Firestore/Auth init error:", err);
+    }
+
+    async function checkOrFetchConfig(notifyCallback) {
+      if (db) {
+        try {
+          const cfgRef = doc(db, "app_config", "general");
+          const snap = await getDoc(cfgRef);
+          window.appCloudSync.isFirestoreConnected = true;
+          if (typeof window.updateCloudSyncBadge === 'function') {
+            window.updateCloudSyncBadge(true);
+          }
+          if (snap.exists()) {
+            const data = snap.data();
+            if (notifyCallback) notifyCallback(data);
+            if (typeof window.handleCloudConfigUpdate === 'function') {
+              window.handleCloudConfigUpdate(data);
+            }
+            return data;
+          }
+        } catch(e) {
+          console.warn("Firestore SDK getDoc fallback to REST:", e.message || e);
+        }
+      }
+
+      // Fallback to REST API
+      try {
+        const res = await fetch(FIRESTORE_REST_BASE);
+        if (res.ok) {
+          const data = await res.json();
+          const parsed = parseFirestoreDoc(data);
+          if (parsed) {
+            window.appCloudSync.isFirestoreConnected = true;
+            if (typeof window.updateCloudSyncBadge === 'function') {
+              window.updateCloudSyncBadge(true);
+            }
+            if (notifyCallback) notifyCallback(parsed);
+            if (typeof window.handleCloudConfigUpdate === 'function') {
+              window.handleCloudConfigUpdate(parsed);
+            }
+            return parsed;
+          }
+        }
+      } catch(e) {
+        console.warn("Firestore REST fetch error:", e.message || e);
+      }
+      return null;
     }
 
     window.appCloudSync = {
       db,
       auth,
       isFirestoreConnected: false,
+      checkConnection: () => checkOrFetchConfig(),
       subscribeConfig(callback) {
-        if (!db) return () => {};
-        try {
-          const cfgRef = doc(db, "app_config", "general");
-          return onSnapshot(cfgRef, (snap) => {
-            window.appCloudSync.isFirestoreConnected = true;
-            if (typeof window.updateCloudSyncBadge === 'function') {
-              window.updateCloudSyncBadge(true);
-            }
-            if (snap.exists()) {
-              callback(snap.data());
-            }
-          }, (err) => {
-            console.warn("Firestore sync notification:", err.message);
-            window.appCloudSync.isFirestoreConnected = false;
-            if (typeof window.updateCloudSyncBadge === 'function') {
-              window.updateCloudSyncBadge(false);
-            }
-          });
-        } catch(e) {
-          return () => {};
+        let unsub = () => {};
+        if (db) {
+          try {
+            const cfgRef = doc(db, "app_config", "general");
+            unsub = onSnapshot(cfgRef, (snap) => {
+              window.appCloudSync.isFirestoreConnected = true;
+              if (typeof window.updateCloudSyncBadge === 'function') {
+                window.updateCloudSyncBadge(true);
+              }
+              if (snap.exists()) {
+                callback(snap.data());
+              }
+            }, (err) => {
+              console.warn("Firestore snapshot notification:", err.message);
+              checkOrFetchConfig(callback);
+            });
+          } catch(e) {
+            console.warn("Snapshot setup error:", e);
+          }
         }
+        checkOrFetchConfig(callback);
+        return unsub;
       },
       async saveConfig(cfg) {
-        if (!db) return false;
-        try {
-          const cfgRef = doc(db, "app_config", "general");
-          const savePromise = setDoc(cfgRef, cfg, { merge: true });
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Firestore save timeout")), 2200)
-          );
-          await Promise.race([savePromise, timeoutPromise]);
-          window.appCloudSync.isFirestoreConnected = true;
-          return true;
-        } catch(e) {
-          console.warn("Firestore save fallback/offline:", e.message || e);
-          window.appCloudSync.isFirestoreConnected = false;
-          return false;
+        let saved = false;
+        if (db) {
+          try {
+            const cfgRef = doc(db, "app_config", "general");
+            const savePromise = setDoc(cfgRef, cfg, { merge: true });
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Timeout")), 2500)
+            );
+            await Promise.race([savePromise, timeoutPromise]);
+            saved = true;
+          } catch(e) {
+            console.warn("SDK save failed, trying REST fallback:", e.message || e);
+          }
         }
+
+        if (!saved) {
+          try {
+            const body = JSON.stringify(toFirestoreFields(cfg));
+            const fieldParams = Object.keys(cfg).map(f => 'updateMask.fieldPaths=' + encodeURIComponent(f)).join('&');
+            const patchUrl = `${FIRESTORE_REST_BASE}?${fieldParams}`;
+            const res = await fetch(patchUrl, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body
+            });
+            if (res.ok) saved = true;
+          } catch(err) {
+            console.warn("REST save failed:", err.message || err);
+          }
+        }
+
+        window.appCloudSync.isFirestoreConnected = saved;
+        if (typeof window.updateCloudSyncBadge === 'function') {
+          window.updateCloudSyncBadge(saved);
+        }
+        return saved;
       },
       async signInGoogle() {
         if (!auth) throw new Error("Google Auth אינו זמין כרגע");
@@ -95,6 +193,15 @@
         return () => {};
       }
     };
+
+    // Immediately trigger initial connection check
+    checkOrFetchConfig();
+
+    // Dispatch event and trigger ready hook
+    window.dispatchEvent(new CustomEvent('cloud-sync-ready', { detail: window.appCloudSync }));
+    if (typeof window.onCloudSyncReady === 'function') {
+      window.onCloudSyncReady();
+    }
   </script>
 
   <style>
@@ -1500,76 +1607,99 @@
       color: var(--ink);
     }
 
-    /* Admin Dashboard 2-Column Layout matching media_1791007531613.png */
+    /* Admin Dashboard Drawer Layout matching media_1791009321693.png */
     .admin-dashboard-frame {
-      display: flex;
-      flex-direction: row-reverse;
-      align-items: flex-start;
-      gap: 20px;
       width: 100%;
-      max-width: 1060px;
+      max-width: 860px;
       margin: 0 auto;
-      padding: 6px 0;
+      padding: 6px 0 24px 0;
       position: relative;
     }
 
     .admin-main-card {
-      flex: 1;
-      min-width: 0;
+      width: 100%;
       background: #ffffff;
       border-radius: 24px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-      padding: 24px clamp(16px, 3vw, 28px);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+      padding: 26px clamp(16px, 3.5vw, 32px);
       border: 1px solid var(--line);
+      box-sizing: border-box;
+    }
+
+    /* Floating Off-Canvas Drawer Menu on ALL Screen Sizes */
+    .admin-sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.38);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      z-index: 998;
+      transition: opacity .25s ease;
+    }
+    .admin-sidebar-backdrop.hidden {
+      display: none !important;
     }
 
     .admin-sidebar {
-      width: 230px;
-      flex-shrink: 0;
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      bottom: 16px;
+      width: 290px;
+      max-width: calc(100vw - 32px);
       background: #ffffff;
       border-radius: 24px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-      padding: 18px 14px;
-      border: 1px solid var(--line);
-      transition: transform .25s ease, opacity .25s ease;
+      box-shadow: -10px 14px 44px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
+      padding: 22px 18px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(calc(100% + 28px));
+      transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1);
+      box-sizing: border-box;
+    }
+    .admin-sidebar.open {
+      transform: translateX(0);
     }
 
     .admin-sidebar-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 12px;
+      padding-bottom: 16px;
       margin-bottom: 14px;
       border-bottom: 1px solid var(--line);
     }
     .admin-sidebar-title {
       margin: 0;
-      font-size: 15.5px;
+      font-size: 17px;
       font-weight: 800;
       color: var(--ink);
     }
     .admin-sidebar-close {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: #f1f5f9;
-      border: none;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background-color .15s ease;
+      width: 34px !important;
+      height: 34px !important;
+      min-height: 34px !important;
+      padding: 0 !important;
+      border-radius: 50% !important;
+      background: #f1f5f9 !important;
+      border: none !important;
+      color: var(--muted) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      transition: background-color .15s ease, color .15s ease;
     }
     .admin-sidebar-close:hover {
-      background: #e2e8f0;
-      color: var(--ink);
+      background: #e2e8f0 !important;
+      color: var(--ink) !important;
     }
 
     .admin-sidebar-nav {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
     }
 
     .admin-sidebar .admin-tab {
@@ -1577,10 +1707,10 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      min-height: 44px;
+      min-height: 48px;
       padding: 10px 16px;
       border-radius: 14px;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
       color: #334155;
       background: transparent;
@@ -1599,8 +1729,8 @@
       font-weight: 800;
     }
     .admin-sidebar .tab-icon {
-      width: 18px;
-      height: 18px;
+      width: 19px;
+      height: 19px;
       stroke: currentColor;
       stroke-width: 2;
       fill: none;
@@ -1612,44 +1742,112 @@
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--line);
-      padding-bottom: 16px;
+      padding-bottom: 18px;
       margin-bottom: 22px;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 14px;
     }
 
     .admin-title-group {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
+
     .admin-menu-toggle-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid var(--line);
-      color: var(--ink);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background-color .15s ease;
-      flex-shrink: 0;
+      width: 44px !important;
+      height: 44px !important;
+      min-height: 44px !important;
+      padding: 0 !important;
+      border-radius: 14px !important;
+      background: #ffffff !important;
+      border: 1px solid var(--line) !important;
+      color: var(--ink) !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      transition: background-color .15s ease, border-color .15s ease, transform .1s ease !important;
+      flex-shrink: 0 !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
-    .admin-menu-toggle-btn:hover { background: #f1f5f9; }
+    .admin-menu-toggle-btn:hover {
+      background: #f8fafc !important;
+      border-color: #cbd5e1 !important;
+    }
+    .admin-menu-toggle-btn:active {
+      transform: scale(0.96);
+    }
+    .admin-menu-toggle-btn svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
 
     .admin-main-title {
       margin: 0;
       font-size: 22px;
       font-weight: 800;
       color: var(--ink);
+      letter-spacing: -0.3px;
+    }
+
+    .admin-status-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .admin-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .admin-app-btn {
+      min-height: 40px;
+      padding: 8px 16px;
+      font-size: 13.5px;
+      font-weight: 700;
+      border-radius: 999px;
+      background: #111827;
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 4px 14px rgba(17, 24, 39, 0.15);
+      border: none;
+      cursor: pointer;
+    }
+    .admin-app-btn:hover {
+      background: #1f2937;
+    }
+
+    .admin-test-btn {
+      min-height: 40px;
+      padding: 8px 16px;
+      font-size: 13.5px;
+      font-weight: 700;
+      border-radius: 999px;
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .admin-test-btn:hover {
+      background: #fde68a;
     }
 
     .admin-exit-pill-btn {
-      min-height: 38px;
-      padding: 6px 14px;
-      font-size: 13px;
+      min-height: 40px;
+      padding: 8px 16px;
+      font-size: 13.5px;
       font-weight: 700;
       border-radius: 999px;
       background: #ffffff;
@@ -1660,57 +1858,51 @@
       gap: 6px;
       cursor: pointer;
     }
-    .admin-exit-pill-btn:hover { background: #f8fafc; }
+    .admin-exit-pill-btn:hover {
+      background: #f8fafc;
+      color: var(--ink);
+    }
 
     .sync-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
+      gap: 7px;
+      font-size: 12.5px;
       font-weight: 700;
       color: var(--muted);
-      margin-top: 3px;
     }
     .sync-dot {
-      width: 8px;
-      height: 8px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       background: #f59e0b;
       display: inline-block;
+      transition: background-color .2s ease, box-shadow .2s ease;
     }
-    .sync-dot.connected { background: #22c55e; }
+    .sync-dot.connected {
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.22);
+    }
 
     .admin-tab-pane { display: none; }
     .admin-tab-pane.active { display: block; animation: fadeIn .15s ease; }
 
-    @media (max-width: 900px) {
-      .admin-sidebar-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.45);
-        backdrop-filter: blur(2px);
-        z-index: 998;
-      }
-      .admin-sidebar {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 270px;
-        z-index: 999;
-        border-radius: 20px 0 0 20px;
-        box-shadow: -6px 0 28px rgba(0,0,0,0.18);
-        transform: translateX(105%);
-      }
-      .admin-sidebar.open {
-        transform: translateX(0);
-      }
+    @media (max-width: 768px) {
       .admin-main-header {
         flex-direction: column;
         align-items: stretch;
+        gap: 16px;
       }
       .admin-header-actions {
-        justify-content: flex-end;
+        justify-content: flex-start;
+      }
+      .admin-sidebar {
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 290px;
+        max-width: 85vw;
+        border-radius: 20px 0 0 20px;
       }
     }
 
@@ -2108,7 +2300,7 @@
 
     <!-- 7. Admin Dashboard Screen (ניהול והגדרות) -->
     <section class="screen" id="adminPanelScreen">
-      <!-- Backdrop for mobile drawer -->
+      <!-- Backdrop for mobile/desktop drawer -->
       <div class="admin-sidebar-backdrop hidden" id="adminSidebarBackdrop"></div>
 
       <div class="admin-dashboard-frame">
@@ -2117,17 +2309,21 @@
           <!-- 1. Header: Toggle Button, Title, Status Badge & 3 Action Buttons -->
           <div class="admin-main-header">
             <div class="admin-title-group">
-              <button type="button" class="admin-menu-toggle-btn" id="adminMenuToggleBtn" title="פתיחת/סגירת תפריט ניהול">
-                <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:currentColor;stroke-width:2.2;fill:none;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+              <button type="button" class="admin-menu-toggle-btn" id="adminMenuToggleBtn" title="פתיחת תפריט ניהול">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="#1e293b" stroke-width="2.3" stroke-linecap="round" fill="none">
+                  <line x1="4" y1="6.5" x2="20" y2="6.5"></line>
+                  <line x1="4" y1="12" x2="20" y2="12"></line>
+                  <line x1="4" y1="17.5" x2="20" y2="17.5"></line>
+                </svg>
               </button>
               <div>
                 <h2 class="admin-main-title">פאנל ניהול האפליקציה</h2>
-                <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap;">
-                  <div id="cloudSyncStatusBadge" class="sync-badge" title="לחצו למידע על סנכרון Firestore">
+                <div class="admin-status-row">
+                  <div id="cloudSyncStatusBadge" class="sync-badge" title="מצב סנכרון בזמן אמת עם ענן Firestore">
                     <span class="sync-dot" id="syncDotEl"></span>
                     <span id="cloudSyncStatusText">טוען סנכרון...</span>
                   </div>
-                  <a href="https://console.firebase.google.com/project/phototherapy-mask/firestore" target="_blank" class="text-link-btn" style="font-size:12px;color:var(--muted);text-decoration:underline;" title="פתיחת מסוף Firebase להפעלת Firestore">
+                  <a href="https://console.firebase.google.com/project/phototherapy-mask/firestore" target="_blank" rel="noopener" class="text-link-btn" style="font-size:12px;color:var(--muted);text-decoration:underline;" title="פתיחת מסוף Firebase להפעלת Firestore">
                     פתיחת מסוף Firestore ↗
                   </a>
                 </div>
@@ -2313,13 +2509,13 @@
         </div>
       </div>
 
-      <!-- Dedicated Sidebar on the Right (תפריט ניהול) -->
+      <!-- Dedicated Floating Sidebar Drawer on the Right (תפריט ניהול) -->
       <aside class="admin-sidebar" id="adminSidebar">
         <div class="admin-sidebar-header">
-          <button type="button" class="admin-sidebar-close" id="adminSidebarCloseBtn" title="סגירת תפריט">
-            <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;stroke-width:2.5;fill:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
           <h3 class="admin-sidebar-title">תפריט ניהול</h3>
+          <button type="button" class="admin-sidebar-close" id="adminSidebarCloseBtn" title="סגירת תפריט">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
         </div>
 
         <div class="admin-sidebar-nav">
@@ -2329,7 +2525,7 @@
           </button>
           <button class="admin-tab" data-tab="tabFeatures">
             <span>פיצ'רים</span>
-            <svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+            <svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4z"></path></svg>
           </button>
           <button class="admin-tab" data-tab="tabPresets">
             <span>תבניות</span>
@@ -3946,6 +4142,36 @@
     }
     window.updateCloudSyncBadge = updateCloudSyncBadge;
 
+    window.handleCloudConfigUpdate = function(cloudData) {
+      if (!cloudData || typeof cloudData !== 'object') return;
+      appConfig = { ...DEFAULT_CONFIG, ...cloudData };
+      saveLocalConfig(appConfig);
+      applyAppConfig(appConfig);
+      updateCloudSyncBadge(true);
+      if (currentScreen === 'admin') {
+        renderAdminDashboard();
+      }
+    };
+
+    function setupCloudSyncSubscription() {
+      if (!window.appCloudSync || !window.appCloudSync.subscribeConfig) return;
+      if (window._cloudSubscribed) return;
+      window._cloudSubscribed = true;
+
+      window.appCloudSync.subscribeConfig((cloudData) => {
+        if (cloudData && typeof cloudData === 'object') {
+          window.handleCloudConfigUpdate(cloudData);
+        }
+      });
+
+      if (window.appCloudSync.isFirestoreConnected) {
+        updateCloudSyncBadge(true);
+      }
+    }
+
+    window.addEventListener('cloud-sync-ready', setupCloudSyncSubscription);
+    window.onCloudSyncReady = setupCloudSyncSubscription;
+
     async function saveConfigToCloud(newCfg) {
       appConfig = { ...appConfig, ...newCfg, updatedAt: Date.now() };
       saveLocalConfig(appConfig);
@@ -4253,7 +4479,7 @@
     }
 
     // --- Admin Dashboard Controller ---
-    // Sidebar Drawer Toggle Handlers
+    // Sidebar Drawer Toggle Handlers (Drawer on ALL screens)
     const adminSidebarEl = document.getElementById('adminSidebar');
     const adminSidebarBackdropEl = document.getElementById('adminSidebarBackdrop');
     const adminMenuToggleBtn = document.getElementById('adminMenuToggleBtn');
@@ -4264,9 +4490,13 @@
       const isOpen = (open !== undefined) ? open : !adminSidebarEl.classList.contains('open');
       adminSidebarEl.classList.toggle('open', isOpen);
       if (adminSidebarBackdropEl) adminSidebarBackdropEl.classList.toggle('hidden', !isOpen);
+      document.body.style.overflow = isOpen ? 'hidden' : '';
     }
 
-    if (adminMenuToggleBtn) adminMenuToggleBtn.addEventListener('click', () => toggleAdminSidebar());
+    if (adminMenuToggleBtn) adminMenuToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleAdminSidebar();
+    });
     if (adminSidebarCloseBtn) adminSidebarCloseBtn.addEventListener('click', () => toggleAdminSidebar(false));
     if (adminSidebarBackdropEl) adminSidebarBackdropEl.addEventListener('click', () => toggleAdminSidebar(false));
 
@@ -4277,10 +4507,8 @@
         document.querySelectorAll('.admin-tab-pane').forEach(p => {
           p.classList.toggle('active', p.id === 'pane' + targetTab.charAt(0).toUpperCase() + targetTab.slice(1));
         });
-        // Auto-close drawer on mobile when tab selected
-        if (window.innerWidth <= 900) {
-          toggleAdminSidebar(false);
-        }
+        // Close drawer smoothly on selecting a tab
+        toggleAdminSidebar(false);
       });
     });
 
@@ -4323,7 +4551,11 @@
       // 5. Google Accounts List
       renderAdminGoogleAccountsList();
 
-      updateCloudSyncBadge(window.appCloudSync && window.appCloudSync.isFirestoreConnected);
+      const isConnected = !!(window.appCloudSync && window.appCloudSync.isFirestoreConnected);
+      updateCloudSyncBadge(isConnected);
+      if (window.appCloudSync && !isConnected && window.appCloudSync.checkConnection) {
+        window.appCloudSync.checkConnection();
+      }
     }
 
     function renderAdminGoogleAccountsList() {
@@ -4644,16 +4876,7 @@
       }
 
       // 2. Subscribe to Cloud Sync (Firestore)
-      if (window.appCloudSync && window.appCloudSync.subscribeConfig) {
-        window.appCloudSync.subscribeConfig((cloudData) => {
-          if (cloudData && typeof cloudData === 'object') {
-            appConfig = { ...DEFAULT_CONFIG, ...cloudData };
-            saveLocalConfig(appConfig);
-            applyAppConfig(appConfig);
-            updateCloudSyncBadge(true);
-          }
-        });
-      }
+      setupCloudSyncSubscription();
 
       // 3. Apply active config to DOM
       applyAppConfig(appConfig);

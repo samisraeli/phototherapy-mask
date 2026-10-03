@@ -1,4 +1,4 @@
-const CACHE_NAME = 'phototherapy-mask-v14';
+const CACHE_NAME = 'phototherapy-mask-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -22,6 +22,13 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+
+  // Do NOT intercept or cache external APIs (Firestore, Firebase SDK, Google Fonts, etc.)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then(response => {
