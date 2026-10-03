@@ -62,11 +62,15 @@
         if (!db) return false;
         try {
           const cfgRef = doc(db, "app_config", "general");
-          await setDoc(cfgRef, cfg, { merge: true });
+          const savePromise = setDoc(cfgRef, cfg, { merge: true });
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Firestore save timeout")), 2200)
+          );
+          await Promise.race([savePromise, timeoutPromise]);
           window.appCloudSync.isFirestoreConnected = true;
           return true;
         } catch(e) {
-          console.warn("Failed to write to Firestore:", e);
+          console.warn("Firestore save fallback/offline:", e.message || e);
           window.appCloudSync.isFirestoreConnected = false;
           return false;
         }
@@ -474,9 +478,10 @@
       margin: 0 auto;
     }
     .prepare-preview-box {
-      width: min(100%, 280px);
-      max-height: 36vh;
+      width: min(100%, calc(34vh * 3 / 4), 280px);
       aspect-ratio: 3 / 4;
+      height: auto;
+      max-height: 34vh;
       border-radius: 18px;
       overflow: hidden;
       border: 1px solid var(--line);
@@ -486,13 +491,106 @@
       align-items: center;
       justify-content: center;
       position: relative;
+      touch-action: none;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0 auto;
       transition: background-color .2s ease, border-color .2s ease;
     }
+    .prepare-preview-box:active { cursor: grabbing; }
     body.mask-white .prepare-preview-box {
       background: #0f172a;
       border-color: #cbd5e1;
     }
-    .prepare-preview-box canvas { width: 100%; height: 100%; display: block; }
+    .prepare-preview-box canvas { width: 100%; height: 100%; display: block; pointer-events: none; }
+
+    .mask-adjust-panel {
+      width: 100%;
+      background: rgba(255,255,255,.75);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 10px 14px;
+      margin: 6px 0 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .adjust-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .adjust-label {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    .reset-pos-btn {
+      min-height: 32px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .reset-pos-btn:active { transform: scale(.95); color: var(--ink); }
+
+    .nudge-toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .nudge-arrows {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .nudge-mid-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nudge-btn {
+      width: 34px;
+      height: 34px;
+      min-height: auto;
+      padding: 0;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,.04);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .nudge-btn:active { transform: scale(.92); background: var(--accent-soft); }
+    .nudge-hint-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      opacity: .4;
+    }
+    .drag-hint-text {
+      font-size: 11.5px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 2px;
+    }
     .prepare-info {
       text-align: center;
       width: 100%;
@@ -665,6 +763,56 @@
       border: 1px solid rgba(255,255,255,.2);
       font-size: 12px;
     }
+    .cam-reset-btn {
+      min-height: 24px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255,255,255,.2);
+      border: 1px solid rgba(255,255,255,.3);
+      color: #fff;
+      border-radius: 999px;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+    .cam-reset-btn:active { transform: scale(.95); }
+    .viewfinder {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      z-index: 1;
+      touch-action: none;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .viewfinder:active { cursor: grabbing; }
+    .viewfinder-drag-hint {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.65);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,.25);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
+      pointer-events: none;
+      transition: opacity .4s ease;
+    }
     .cam-zoom-btn {
       width: 26px;
       height: 26px;
@@ -677,18 +825,7 @@
       font-size: 14px;
     }
 
-    .viewfinder {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-      z-index: 1;
-    }
+
     video, #cameraOverlay {
       position: absolute;
       inset: 0;
@@ -746,6 +883,302 @@
     }
 
     /* Result Screen */
+    .auth-success-msg {
+      color: #047857;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
+    .admin-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .admin-app-btn {
+      min-height: 38px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .admin-test-btn {
+      min-height: 38px;
+      padding: 6px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      border-radius: 999px;
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+    .admin-test-btn:hover { background: #fde68a; }
+
+    .admin-quick-badge {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+      transition: all .2s ease;
+    }
+    .admin-quick-badge:hover {
+      background: #0f172a;
+      transform: scale(1.03);
+    }
+    .admin-quick-badge.visible {
+      display: inline-flex;
+    }
+
+    .admin-info-banner {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-bottom: 12px;
+    }
+    .admin-info-banner strong { color: var(--ink); }
+
+    .google-accounts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .google-account-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .google-account-item .remove-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .google-account-item .remove-btn:hover { background: #fee2e2; }
+
+    /* Camera Floating Mask Adjust Toolbar */
+    .cam-mask-ctrl-toggle {
+      position: absolute;
+      bottom: 20px;
+      right: 18px;
+      z-index: 25;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      touch-action: manipulation;
+    }
+    .cam-mask-ctrl-toggle:active { transform: scale(0.96); }
+
+    .cam-mask-controls-panel {
+      position: absolute;
+      bottom: 70px;
+      right: 18px;
+      z-index: 25;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 18px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      user-select: none;
+      -webkit-user-select: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .cam-mask-controls-panel.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      display: none !important;
+    }
+    .cam-ctrl-header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #94a3b8;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      padding-bottom: 6px;
+    }
+    .cam-ctrl-close {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 4px;
+    }
+    .cam-ctrl-close:hover { color: #ffffff; }
+
+    .cam-nudge-grid {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .cam-nudge-mid {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cam-nudge-btn {
+      width: 34px;
+      height: 34px;
+      min-height: auto;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .cam-nudge-btn:active { background: rgba(255, 255, 255, 0.35); transform: scale(0.93); }
+
+    .cam-ctrl-zoom-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 8px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+    }
+    .cam-ctrl-zoom-btn {
+      width: 28px;
+      height: 28px;
+      min-height: auto;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .cam-ctrl-zoom-label {
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 42px;
+      text-align: center;
+    }
+    .cam-ctrl-reset-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #e2e8f0;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .cam-ctrl-reset-btn:hover { background: rgba(255,255,255,0.25); }
+
+    /* Camera Prompt Banner */
+    .cam-prompt-banner {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 6px 14px;
+      max-width: 90%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      cursor: pointer;
+      user-select: none;
+    }
+    .cam-prompt-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 240px;
+    }
+    .cam-prompt-cycle-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: #ffffff;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
     .result-layout {
       display: flex;
       flex-direction: column;
@@ -756,8 +1189,7 @@
     }
     .result-image-box {
       width: 100%;
-      max-width: 320px;
-      height: 48vh;
+      max-width: min(90vw, 420px);
       border-radius: 18px;
       background: #0b0f19;
       box-shadow: var(--shadow);
@@ -768,16 +1200,15 @@
       justify-content: center;
       position: relative;
       cursor: pointer;
-      padding: 6px;
+      padding: 0;
     }
     .result-image-box img {
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
+      width: 100%;
       height: auto;
+      max-height: 56vh;
       object-fit: contain;
       display: block;
-      border-radius: 12px;
+      border-radius: 18px;
     }
     .zoom-hint-badge {
       position: absolute;
@@ -1268,6 +1699,9 @@
     </div>
     <div class="top-title" id="topScreenTitle">שקף צילום</div>
     <div class="top-right">
+      <button id="adminQuickReturnBtn" class="admin-quick-badge" title="חזרה מהירה לפאנל ניהול">
+        <span>👑 מנהל</span>
+      </button>
       <button class="color-toggle-btn" id="topColorToggleBtn" title="החלפת צבע שקף">
         <span class="color-dot black" id="topColorDot"></span>
         <span id="topColorLabel">שחור</span>
@@ -1347,11 +1781,40 @@
           <h2 id="prepareTitle">חלון עגול</h2>
           <p id="prepareText">מה נשאר גלוי ומה מוסתר? בחרו פריים שבו החלקים הגלויים מספרים משהו גם על מה שלא רואים.</p>
           
-          <div class="zoom-toolbar">
-            <span>זום שקף:</span>
-            <button class="zoom-btn" id="prepareZoomOutBtn" title="הקטנת שקף">−</button>
-            <span id="prepareZoomLabel">100%</span>
-            <button class="zoom-btn" id="prepareZoomInBtn" title="הגדלת שקף">+</button>
+          <div class="mask-adjust-panel">
+            <div class="adjust-row">
+              <span class="adjust-label">גודל שקף:</span>
+              <div class="zoom-toolbar" style="margin-bottom:0;">
+                <button type="button" class="zoom-btn" id="prepareZoomOutBtn" title="הקטנת שקף">−</button>
+                <span id="prepareZoomLabel">100%</span>
+                <button type="button" class="zoom-btn" id="prepareZoomInBtn" title="הגדלת שקף">+</button>
+              </div>
+              <button type="button" class="reset-pos-btn" id="prepareResetPosBtn" title="איפוס מיקום וזום למרכז">
+                <svg class="icon-svg" style="width:13px;height:13px;" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                <span>מרכוז</span>
+              </button>
+            </div>
+
+            <div class="nudge-toolbar">
+              <div class="nudge-arrows">
+                <button type="button" class="nudge-btn" id="prepareMoveUpBtn" title="הזזה למעלה">
+                  <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+                <div class="nudge-mid-row">
+                  <button type="button" class="nudge-btn" id="prepareMoveRightBtn" title="הזזה ימינה">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </button>
+                  <span class="nudge-hint-dot" title="ניתן לגרור את השקף ישירות"></span>
+                  <button type="button" class="nudge-btn" id="prepareMoveLeftBtn" title="הזזה שמאלה">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  </button>
+                </div>
+                <button type="button" class="nudge-btn" id="prepareMoveDownBtn" title="הזזה למטה">
+                  <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+              </div>
+              <small class="drag-hint-text">💡 ניתן לגרור את השקף ישירות עם האצבע/עכבר</small>
+            </div>
           </div>
         </div>
 
@@ -1490,15 +1953,29 @@
         <div class="admin-header-row">
           <div>
             <h2 style="margin:0;font-size:22px;font-weight:800;">פאנל ניהול האפליקציה</h2>
-            <div id="cloudSyncStatusBadge" class="sync-badge">
-              <span class="sync-dot" id="syncDotEl"></span>
-              <span id="cloudSyncStatusText">טוען סנכרון...</span>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap;">
+              <div id="cloudSyncStatusBadge" class="sync-badge" title="לחצו למידע על סנכרון Firestore">
+                <span class="sync-dot" id="syncDotEl"></span>
+                <span id="cloudSyncStatusText">טוען סנכרון...</span>
+              </div>
+              <a href="https://console.firebase.google.com/project/phototherapy-mask/firestore" target="_blank" class="text-link-btn" style="font-size:12px;color:var(--muted);text-decoration:underline;" title="פתיחת מסוף Firebase להפעלת Firestore">
+                פתיחת מסוף Firestore ↗
+              </a>
             </div>
           </div>
-          <button class="secondary" id="adminExitBtn" title="חזרה לאפליקציה">
-            <svg class="icon-svg" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            <span>יציאה</span>
-          </button>
+          <div class="admin-header-actions">
+            <button class="primary admin-app-btn" id="adminGoToAppBtn" title="כניסה לאפליקציה תוך שמירה על הרשאות מנהל">
+              <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <span>כניסה לאפליקציה</span>
+            </button>
+            <button class="secondary admin-test-btn" id="adminTestParticipantBtn" title="יציאה מהרשאות מנהל לבדיקת חוויית המשתתף (יבקש סיסמת Gate וקוד סדנה בשמירה)">
+              <span>🧪 בדיקת מצב משתתף</span>
+            </button>
+            <button class="secondary" id="adminExitBtn" title="התנתקות ויציאה">
+              <svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              <span>התנתק</span>
+            </button>
+          </div>
         </div>
 
         <!-- Admin Tabs -->
@@ -1616,7 +2093,12 @@
 
         <!-- Tab 4: Prompts Management -->
         <div class="admin-tab-pane" id="paneTabPrompts">
-          <p style="color:var(--muted);font-size:13.5px;margin:0 0 10px;">הנחיות צילום ורפלקציה המוצגות במסך הבית:</p>
+          <div class="admin-info-banner">
+            📌 <strong>היכן מוצגות ההנחיות באפליקציה?</strong><br/>
+            1. <strong>במסך הבית:</strong> בכרטיס "הנחיה לצילום" (עם כפתור להחלפה אקראית).<br/>
+            2. <strong>במסך המצלמה:</strong> בסרגל עליון צף בזמן אמת, שמסייע למשתתף להתמקד בכוונה הרגשית בזמן בחירת הפריים.
+          </div>
+          <p style="color:var(--muted);font-size:13.5px;margin:0 0 10px;">הנחיות צילום ורפלקציה פעילות (ניתן להוסיף, לערוך או למחוק):</p>
           <div style="display:flex;gap:8px;margin-bottom:12px;">
             <input type="text" id="newPromptInput" class="custom-input" placeholder="הוסיפו הנחיה חדשה..." />
             <button type="button" class="primary" id="addPromptBtn" style="white-space:nowrap;">הוספה</button>
@@ -1644,10 +2126,17 @@
           </div>
 
           <div class="setting-group">
-            <label class="setting-title">חיבור לחשבון Google</label>
-            <div id="adminGoogleAccountStatus" style="font-size:13.5px;color:var(--muted);margin-bottom:8px;">לא מחובר</div>
-            <button type="button" class="secondary" id="adminGoogleConnectBtn" style="gap:8px;">
-              <span>חיבור חשבון Google לכניסה מהירה</span>
+            <label class="setting-title">חשבונות Google מורשים לניהול (תמיכה ב-2 מנחים ומעלה)</label>
+            <div class="admin-info-banner" style="margin-bottom:8px;">
+              ניתן להגדיר מספר חשבונות Google (למשל שני מנחי סדנה). כל חשבון ברשימה זו יוכל להתחבר בבלעדיות כמנהל.
+            </div>
+            <div id="adminGoogleAccountsList" class="google-accounts-list"></div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <input type="email" id="newGoogleAdminEmailInput" class="custom-input" placeholder="כתובת Gmail להוספה (למשל: partner@gmail.com)" />
+              <button type="button" class="secondary" id="addGoogleAdminEmailBtn">הוסף חשבון</button>
+            </div>
+            <button type="button" class="secondary" id="adminGoogleConnectBtn" style="gap:8px;margin-top:10px;width:100%;">
+              <span>+ חבר חשבון Google של מכשיר זה</span>
             </button>
           </div>
         </div>
@@ -1757,6 +2246,7 @@
           <button class="cam-zoom-btn" id="camZoomOutBtn">−</button>
           <span id="camZoomLabel">100%</span>
           <button class="cam-zoom-btn" id="camZoomInBtn">+</button>
+          <button type="button" class="cam-reset-btn" id="camResetPosBtn" title="איפוס מיקום למרכז">מרכוז</button>
         </div>
       </div>
 
@@ -1766,9 +2256,57 @@
       </button>
     </div>
 
-    <div class="viewfinder">
+    <div class="viewfinder" id="cameraViewfinder">
+      <!-- Live Intention Prompt Banner -->
+      <div class="cam-prompt-banner" id="camPromptBanner" title="לחצו להחלפת הנחיה">
+        <span style="font-size:14px;">💡</span>
+        <span class="cam-prompt-text" id="camPromptText">הנחיה לצילום...</span>
+        <button type="button" class="cam-prompt-cycle-btn" id="camNextPromptBtn" title="הנחיה הבאה">⇄</button>
+      </div>
+
+      <div class="viewfinder-drag-hint" id="viewfinderDragHint">
+        <svg class="icon-svg" style="width:13px;height:13px;" viewBox="0 0 24 24"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
+        <span>גררו עם האצבע כדי למקם את השקף</span>
+      </div>
+
       <video id="video" autoplay playsinline webkit-playsinline muted></video>
       <canvas id="cameraOverlay" aria-hidden="true"></canvas>
+
+      <!-- Floating Mask Position & Zoom Toolbar in Camera -->
+      <button type="button" class="cam-mask-ctrl-toggle" id="camMaskCtrlToggleBtn" title="פתיחת/סגירת כיוונון שקף">
+        <svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+        <span>כיוונון שקף</span>
+      </button>
+
+      <div class="cam-mask-controls-panel hidden" id="camMaskControlsPanel">
+        <div class="cam-ctrl-header">
+          <span>מיקום וגודל שקף</span>
+          <button type="button" class="cam-ctrl-close" id="camCtrlCloseBtn">✕</button>
+        </div>
+        <div class="cam-nudge-grid">
+          <button type="button" class="cam-nudge-btn" id="camNudgeUp" title="למעלה">
+            <svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"></polyline></svg>
+          </button>
+          <div class="cam-nudge-mid">
+            <button type="button" class="cam-nudge-btn" id="camNudgeRight" title="ימינה">
+              <svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            <button type="button" class="cam-ctrl-reset-btn" id="camCtrlCenterBtn" title="מרכוז שקף">מרכוז</button>
+            <button type="button" class="cam-nudge-btn" id="camNudgeLeft" title="שמאלה">
+              <svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+          </div>
+          <button type="button" class="cam-nudge-btn" id="camNudgeDown" title="למטה">
+            <svg class="icon-svg" style="width:16px;height:16px;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+        </div>
+        <div class="cam-ctrl-zoom-row">
+          <button type="button" class="cam-ctrl-zoom-btn" id="camCtrlZoomOut">−</button>
+          <span class="cam-ctrl-zoom-label" id="camCtrlZoomLabel">100%</span>
+          <button type="button" class="cam-ctrl-zoom-btn" id="camCtrlZoomIn">+</button>
+        </div>
+      </div>
+
       <div class="camera-error-badge" id="cameraError">
         <strong>לא הצלחתי לפתוח מצלמה</strong>
         <p style="font-size:13px; margin: 8px 0;">נא לוודא שאישרת הרשאת מצלמה בדפדפן.</p>
@@ -1810,7 +2348,9 @@
     let currentScreen = 'home';
     let maskColor = 'black'; // 'black' or 'white'
     let creatorMode = 'refPositive'; // 'refPositive', 'softBlend', 'negative'
-    let maskScale = 1.0; // Mask Zoom scale factor (0.6 to 1.6)
+    let maskScale = 1.0; // Mask Zoom scale factor (0.5 to 2.0)
+    let maskOffsetX = 0; // Horizontal offset (-0.8 to 0.8 normalized)
+    let maskOffsetY = 0; // Vertical offset (-0.8 to 0.8 normalized)
     let selectedMask = null;
     let personalMasks = [];
     let personalSourceImage = null;
@@ -1853,8 +2393,17 @@
         'בחרו פריים שבו החלק החסר חשוב כמו החלק הגלוי.'
       ],
       adminGoogleEmail: null,
+      adminGoogleEmails: ['samisraeli@gmail.com'],
       updatedAt: Date.now()
     };
+
+    function getAuthorizedGoogleEmails() {
+      const list = Array.isArray(appConfig.adminGoogleEmails) ? [...appConfig.adminGoogleEmails] : [];
+      if (appConfig.adminGoogleEmail && !list.some(e => e.toLowerCase() === appConfig.adminGoogleEmail.toLowerCase())) {
+        list.push(appConfig.adminGoogleEmail.toLowerCase());
+      }
+      return list;
+    }
 
     let appConfig = { ...DEFAULT_CONFIG };
 
@@ -1871,6 +2420,11 @@
              localStorage.getItem(STORAGE_KEY_ADMIN) === 'true';
     }
 
+    function updateAdminBarIndicator() {
+      const btn = document.getElementById('adminQuickReturnBtn');
+      if (btn) btn.classList.toggle('visible', isAdminSession());
+    }
+
     function setAdminSession(val) {
       if (val) {
         sessionStorage.setItem(STORAGE_KEY_ADMIN, 'true');
@@ -1879,6 +2433,7 @@
         sessionStorage.removeItem(STORAGE_KEY_ADMIN);
         localStorage.removeItem(STORAGE_KEY_ADMIN);
       }
+      updateAdminBarIndicator();
     }
 
     function isWorkshopUnlocked() {
@@ -1929,61 +2484,81 @@
       'בחרו פריים שבו החלק החסר חשוב כמו החלק הגלוי.'
     ];
 
-    // Presets with well-proportioned, responsive openings (Border ALWAYS fills whole frame!)
+    // Presets with responsive openings and full support for (scale, ox, oy) positioning!
     const masks = [
-      { id: 'frameCircle', name: 'חלון עגול', draw: (ctx,w,h,a,c,scale=1) => {
+      { id: 'frameCircle', type: 'preset', name: 'חלון עגול', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
           fill(ctx,w,h,a,c);
           const r = Math.min(w,h) * 0.42 * scale;
-          holeCircle(ctx, w * 0.5, h * 0.5, r);
+          holeCircle(ctx, w * 0.5 + ox, h * 0.5 + oy, r);
         }
       },
-      { id: 'frameSquare', name: 'חלון מרובע', draw: (ctx,w,h,a,c,scale=1) => {
+      { id: 'frameSquare', type: 'preset', name: 'חלון מרובע', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
           fill(ctx,w,h,a,c);
           const size = Math.min(w,h) * 0.82 * scale;
-          clearRound(ctx, (w - size)/2, (h - size)/2, size, size, 24);
+          clearRound(ctx, (w - size)/2 + ox, (h - size)/2 + oy, size, size, 24);
         }
       },
-      { id: 'leftHalf', name: 'חצי שמאל מוסתר', draw: (ctx,w,h,a,c,scale=1) => { rect(ctx,0,0,w*Math.min(1, 0.5*scale),h,a,c); } },
-      { id: 'rightHalf', name: 'חצי ימין מוסתר', draw: (ctx,w,h,a,c,scale=1) => { const rw = w*Math.min(1, 0.5*scale); rect(ctx,w-rw,0,rw,h,a,c); } },
-      { id: 'topBand', name: 'שמיים מוסתרים', draw: (ctx,w,h,a,c,scale=1) => { rect(ctx,0,0,w,h*Math.min(1, 0.40*scale),a,c); } },
-      { id: 'bottomBand', name: 'קרקע מוסתרת', draw: (ctx,w,h,a,c,scale=1) => { const bh = h*Math.min(1, 0.40*scale); rect(ctx,0,h-bh,w,bh,a,c); } },
-      { id: 'shutters', name: 'תריסים', draw: (ctx,w,h,a,c,scale=1) => {
+      { id: 'leftHalf', name: 'חצי שמאל מוסתר', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
+          const rw = Math.max(0, Math.min(w, w * 0.5 * scale + ox));
+          rect(ctx, 0, 0, rw, h, a, c);
+        }
+      },
+      { id: 'rightHalf', name: 'חצי ימין מוסתר', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
+          const rw = Math.max(0, Math.min(w, w * 0.5 * scale - ox));
+          rect(ctx, w - rw, 0, rw, h, a, c);
+        }
+      },
+      { id: 'topBand', name: 'שמיים מוסתרים', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
+          const bh = Math.max(0, Math.min(h, h * 0.40 * scale + oy));
+          rect(ctx, 0, 0, w, bh, a, c);
+        }
+      },
+      { id: 'bottomBand', name: 'קרקע מוסתרת', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
+          const bh = Math.max(0, Math.min(h, h * 0.40 * scale - oy));
+          rect(ctx, 0, h - bh, w, bh, a, c);
+        }
+      },
+      { id: 'shutters', name: 'תריסים', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
           const count = Math.max(4, Math.round(8 / scale));
           const step = h / count;
-          for (let y=0; y<h; y+=step) rect(ctx,0,y,w,step*0.5,a,c);
+          for (let y = (oy % step) - step; y < h + step; y += step) {
+            rect(ctx, 0, y, w, step * 0.5, a, c);
+          }
         }
       },
-      { id: 'narrowSlit', name: 'פס ראייה', draw: (ctx,w,h,a,c,scale=1) => {
+      { id: 'narrowSlit', name: 'פס ראייה', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
           fill(ctx,w,h,a,c);
           const sw = Math.min(w * 0.96, w * 0.90 * scale);
           const sh = Math.min(h * 0.90, Math.min(w,h) * 0.32 * scale);
-          clearRound(ctx, (w - sw)/2, (h - sh)/2, sw, sh, 999);
+          clearRound(ctx, (w - sw)/2 + ox, (h - sh)/2 + oy, sw, sh, 999);
         }
       },
-      { id: 'diagonal', name: 'אלכסון', draw: (ctx,w,h,a,c,scale=1) => {
-          ctx.save(); ctx.globalAlpha=a; ctx.fillStyle = c === 'white' ? '#fff' : '#000';
+      { id: 'diagonal', name: 'אלכסון', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
+          ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = c === 'white' ? '#fff' : '#000';
           const d1 = Math.min(w, w * 0.65 * scale);
           const d2 = Math.min(h, h * 0.65 * scale);
-          ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(d1,0); ctx.lineTo(0,d2); ctx.closePath(); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(w,h); ctx.lineTo(w - d1*0.55, h); ctx.lineTo(w, h - d2*0.55); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(d1 + ox, 0); ctx.lineTo(0, d2 + oy); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(w,h); ctx.lineTo(w - d1*0.55 + ox, h); ctx.lineTo(w, h - d2*0.55 + oy); ctx.closePath(); ctx.fill();
           ctx.restore();
         }
       },
-      { id: 'spots', name: 'כתמים', draw: (ctx,w,h,a,c,scale=1) => {
-          [[.25,.26,.18],[.72,.22,.15],[.78,.62,.20],[.30,.72,.16],[.52,.48,.12]].forEach(([x,y,r]) => blob(ctx,w*x,h*y,Math.min(w,h)*r*scale,a,c));
+      { id: 'spots', name: 'כתמים', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
+          [[.25,.26,.18],[.72,.22,.15],[.78,.62,.20],[.30,.72,.16],[.52,.48,.12]].forEach(([x,y,r]) => {
+            blob(ctx, w*x + ox, h*y + oy, Math.min(w,h)*r*scale, a, c);
+          });
         }
       },
-      { id: 'centerBlock', name: 'מרכז מוסתר', draw: (ctx,w,h,a,c,scale=1) => {
+      { id: 'centerBlock', name: 'מרכז מוסתר', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
           clear(ctx,w,h);
           const size = Math.min(w,h) * 0.55 * scale;
-          rect(ctx, (w - size)/2, (h - size)/2, size, size, a, c);
+          rect(ctx, (w - size)/2 + ox, (h - size)/2 + oy, size, size, a, c);
         }
       },
-      { id: 'twoWindows', name: 'שני חלונות', draw: (ctx,w,h,a,c,scale=1) => {
+      { id: 'twoWindows', name: 'שני חלונות', draw: (ctx,w,h,a,c,scale=1,ox=0,oy=0) => {
           fill(ctx,w,h,a,c);
           const r = Math.min(w,h) * 0.22 * scale;
-          holeCircle(ctx, w*.32, h*.44, r);
-          holeCircle(ctx, w*.68, h*.56, r);
+          holeCircle(ctx, w*.32 + ox, h*.44 + oy, r);
+          holeCircle(ctx, w*.68 + ox, h*.56 + oy, r);
         }
       }
     ];
@@ -2096,7 +2671,7 @@
       }
       else if (currentScreen === 'prepare') navigateTo('gallery');
       else if (currentScreen === 'gallery' || currentScreen === 'creator') navigateTo('home');
-      else if (currentScreen === 'result') navigateTo('prepare');
+      else if (currentScreen === 'result') navigateTo('gallery');
       else history.back();
     });
 
@@ -2158,20 +2733,58 @@
     topColorToggleBtn.addEventListener('click', toggleMaskColor);
     document.getElementById('cameraColorToggleBtn').addEventListener('click', toggleMaskColor);
 
-    // --- Zoom Controls ---
+    // --- Zoom & Position Controls ---
     function setMaskScale(newScale) {
-      maskScale = Math.max(0.6, Math.min(1.6, Math.round(newScale * 10) / 10));
+      maskScale = Math.max(0.4, Math.min(2.2, Math.round(newScale * 100) / 100));
       const label = `${Math.round(maskScale * 100)}%`;
-      document.getElementById('prepareZoomLabel').textContent = label;
-      document.getElementById('camZoomLabel').textContent = label;
+      const pLabel = document.getElementById('prepareZoomLabel');
+      const cLabel = document.getElementById('camZoomLabel');
+      if (pLabel) pLabel.textContent = label;
+      if (cLabel) cLabel.textContent = label;
       if (currentScreen === 'prepare') updatePreparePreview();
       if (currentScreen === 'camera') sizeOverlay();
+    }
+
+    function setMaskPosition(newOx, newOy) {
+      maskOffsetX = Math.max(-0.85, Math.min(0.85, Math.round(newOx * 100) / 100));
+      maskOffsetY = Math.max(-0.85, Math.min(0.85, Math.round(newOy * 100) / 100));
+      if (currentScreen === 'prepare') updatePreparePreview();
+      if (currentScreen === 'camera') sizeOverlay();
+    }
+
+    function resetMaskTransform() {
+      maskOffsetX = 0;
+      maskOffsetY = 0;
+      maskScale = 1.0;
+      const label = '100%';
+      const pLabel = document.getElementById('prepareZoomLabel');
+      const cLabel = document.getElementById('camZoomLabel');
+      if (pLabel) pLabel.textContent = label;
+      if (cLabel) cLabel.textContent = label;
+      if (currentScreen === 'prepare') updatePreparePreview();
+      if (currentScreen === 'camera') sizeOverlay();
+      showToast('השקף אופס למרכז');
     }
 
     document.getElementById('prepareZoomInBtn').addEventListener('click', () => setMaskScale(maskScale + 0.1));
     document.getElementById('prepareZoomOutBtn').addEventListener('click', () => setMaskScale(maskScale - 0.1));
     document.getElementById('camZoomInBtn').addEventListener('click', () => setMaskScale(maskScale + 0.1));
     document.getElementById('camZoomOutBtn').addEventListener('click', () => setMaskScale(maskScale - 0.1));
+
+    // Prepare Screen Nudge Arrows
+    const btnUp = document.getElementById('prepareMoveUpBtn');
+    const btnDown = document.getElementById('prepareMoveDownBtn');
+    const btnRight = document.getElementById('prepareMoveRightBtn');
+    const btnLeft = document.getElementById('prepareMoveLeftBtn');
+    const btnReset = document.getElementById('prepareResetPosBtn');
+    const camResetBtn = document.getElementById('camResetPosBtn');
+
+    if (btnUp) btnUp.addEventListener('click', () => setMaskPosition(maskOffsetX, maskOffsetY - 0.05));
+    if (btnDown) btnDown.addEventListener('click', () => setMaskPosition(maskOffsetX, maskOffsetY + 0.05));
+    if (btnRight) btnRight.addEventListener('click', () => setMaskPosition(maskOffsetX + 0.05, maskOffsetY));
+    if (btnLeft) btnLeft.addEventListener('click', () => setMaskPosition(maskOffsetX - 0.05, maskOffsetY));
+    if (btnReset) btnReset.addEventListener('click', resetMaskTransform);
+    if (camResetBtn) camResetBtn.addEventListener('click', resetMaskTransform);
 
     // --- Home Screen Actions ---
     document.getElementById('homeStartBtn').addEventListener('click', () => navigateTo('gallery'));
@@ -2252,13 +2865,11 @@
     }
 
     // --- High-Contrast Preview Rendering (Black & White Modes) ---
-    function renderPreview(ctx, w, h, mask, color = maskColor, scale = 1) {
+    function renderPreview(ctx, w, h, mask, color = maskColor, scale = 1, ox = 0, oy = 0) {
       ctx.clearRect(0, 0, w, h);
       const isWhite = (color === 'white');
 
       // 1. Simulated World Backdrop
-      // When mask is white, world behind cutout is rich dark slate (#1e293b) for strong contrast.
-      // When mask is black, world behind cutout is clean neutral white (#ffffff).
       ctx.fillStyle = isWhite ? '#1e293b' : '#ffffff';
       ctx.fillRect(0, 0, w, h);
 
@@ -2271,10 +2882,15 @@
       if (mask) {
         if (mask.type === 'personal-custom') {
           if (mask.image) {
+            mCtx.save();
+            mCtx.translate(w / 2 + ox, h / 2 + oy);
+            if (scale !== 1) mCtx.scale(scale, scale);
+            mCtx.translate(-w / 2, -h / 2);
             drawImageCover(mCtx, mask.image, w, h, 1);
+            mCtx.restore();
           }
         } else if (mask.draw) {
-          mask.draw(mCtx, w, h, 1, color, scale);
+          mask.draw(mCtx, w, h, 1, color, scale, ox, oy);
         }
       }
 
@@ -2338,13 +2954,16 @@
       ctx.clearRect(0, 0, w, h);
       if (!mask) return;
 
+      const ox = maskOffsetX * w;
+      const oy = maskOffsetY * h;
+
       if (mask.type === 'personal-custom') {
         ctx.save();
+        ctx.translate(w / 2 + ox, h / 2 + oy);
         if (maskScale !== 1) {
-          ctx.translate(w / 2, h / 2);
           ctx.scale(maskScale, maskScale);
-          ctx.translate(-w / 2, -h / 2);
         }
+        ctx.translate(-w / 2, -h / 2);
         if (mask.image) {
           drawImageCover(ctx, mask.image, w, h, alpha);
         } else if (mask.dataUrl) {
@@ -2358,7 +2977,7 @@
       }
 
       if (mask.draw) {
-        mask.draw(ctx, w, h, alpha, maskColor, maskScale);
+        mask.draw(ctx, w, h, alpha, maskColor, maskScale, ox, oy);
       }
     }
 
@@ -2400,8 +3019,8 @@
       const grid = document.getElementById('maskGrid');
       grid.innerHTML = '';
 
-      // Personal Masks Section
-      if (personalMasks.length) {
+      // Personal Masks Section - only rendered if allowCustomMask is enabled!
+      if (appConfig.allowCustomMask !== false && personalMasks.length) {
         const label = document.createElement('div');
         label.className = 'section-label';
         label.textContent = 'השקפים שלי';
@@ -2427,7 +3046,8 @@
           card.querySelector('.delete-mask-btn').addEventListener('click', (e) => deletePersonalMask(personal.id, e));
           card.addEventListener('click', () => {
             selectedMask = personal;
-            navigateTo('prepare');
+            resetMaskTransform();
+            startCamera();
           });
           grid.appendChild(card);
         }
@@ -2454,7 +3074,8 @@
         renderPreview(cCtx, canvas.width, canvas.height, mask, maskColor, 1);
         card.addEventListener('click', () => {
           selectedMask = { ...mask, type: 'preset' };
-          navigateTo('prepare');
+          resetMaskTransform();
+          startCamera();
         });
         grid.appendChild(card);
       });
@@ -2473,10 +3094,21 @@
       const isPersonal = selectedMask.type === 'personal-custom';
       document.getElementById('prepareTitle').textContent = selectedMask.name;
       document.getElementById('prepareText').textContent = isPersonal
-        ? 'מה היית רוצה להכניס לתוכך דרך השקף הזה? כוונו את המצלמה ותנו לעולם לזרום פנימה דרך הדמות.'
-        : 'מה נשאר גלוי ומה מוסתר? בחרו פריים שבו החלקים הגלויים מספרים משהו גם על מה שלא רואים.';
+        ? 'מה היית רוצה להכניס לתוכך דרך השקף הזה? גררו את השקף כדי למקם אותו מול המצלמה.'
+        : 'מה נשאר גלוי ומה מוסתר? גררו את השקף או השתמשו בחצים כדי למקם אותו בדיוק היכן שתרצו.';
 
-      renderPreview(preparePreviewCtx, preparePreview.width, preparePreview.height, selectedMask, maskColor, maskScale);
+      // Dynamic canvas resolution matching exact client dimensions to prevent any oval distortion!
+      const rect = preparePreview.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.round(rect.width || 280);
+      const h = Math.round(rect.height || (w * 4 / 3));
+      preparePreview.width = Math.round(w * dpr);
+      preparePreview.height = Math.round(h * dpr);
+      preparePreviewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const ox = maskOffsetX * w;
+      const oy = maskOffsetY * h;
+      renderPreview(preparePreviewCtx, w, h, selectedMask, maskColor, maskScale, ox, oy);
     }
 
     document.getElementById('continueToCameraBtn').addEventListener('click', () => startCamera());
@@ -2666,7 +3298,8 @@
       mask.image = await loadImage(personalDraftDataUrl);
       await savePersonalMask(mask);
       selectedMask = mask;
-      navigateTo('prepare');
+      resetMaskTransform();
+      startCamera();
     }
 
     function downloadDataUrl(dataUrl, filename) {
@@ -2683,6 +3316,148 @@
       if (!personalDraftDataUrl) return alert('נא לבחור תמונה לפני הורדה');
       downloadDataUrl(personalDraftDataUrl, `shekef-mask-${Date.now()}.png`);
     });
+
+    // --- Unified Touch & Mouse Dragging Engine ---
+    function setupDraggableMask(element, onUpdate) {
+      if (!element) return;
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+      let initialOffsetX = 0;
+      let initialOffsetY = 0;
+      let initialPinchDist = 0;
+      let initialScale = 1.0;
+
+      element.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button, input, textarea')) return;
+        isDragging = true;
+        try { element.setPointerCapture(e.pointerId); } catch(err) {}
+        startX = e.clientX;
+        startY = e.clientY;
+        initialOffsetX = maskOffsetX;
+        initialOffsetY = maskOffsetY;
+
+        // Hide camera drag hint on first touch
+        const hint = document.getElementById('viewfinderDragHint');
+        if (hint) hint.style.opacity = '0';
+      });
+
+      element.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const rect = element.getBoundingClientRect();
+        const w = rect.width || 320;
+        const h = rect.height || 480;
+
+        const dx = (e.clientX - startX) / w;
+        const dy = (e.clientY - startY) / h;
+
+        maskOffsetX = Math.max(-0.85, Math.min(0.85, initialOffsetX + dx));
+        maskOffsetY = Math.max(-0.85, Math.min(0.85, initialOffsetY + dy));
+        onUpdate();
+      });
+
+      const stopDrag = (e) => {
+        if (isDragging) {
+          isDragging = false;
+          try { element.releasePointerCapture(e.pointerId); } catch(err) {}
+        }
+      };
+
+      element.addEventListener('pointerup', stopDrag);
+      element.addEventListener('pointercancel', stopDrag);
+
+      // 2-finger pinch to zoom
+      element.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          isDragging = false;
+          initialPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          initialScale = maskScale;
+        }
+      }, { passive: true });
+
+      element.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialPinchDist > 0) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const ratio = dist / initialPinchDist;
+          setMaskScale(initialScale * ratio);
+        }
+      }, { passive: true });
+    }
+
+    // Camera Mask Controls & Prompt Banner Handlers
+    const camMaskCtrlToggleBtn = document.getElementById('camMaskCtrlToggleBtn');
+    const camMaskControlsPanel = document.getElementById('camMaskControlsPanel');
+    const camCtrlCloseBtn = document.getElementById('camCtrlCloseBtn');
+    const camCtrlZoomLabel = document.getElementById('camCtrlZoomLabel');
+
+    function updateCamControlsUI() {
+      if (camCtrlZoomLabel) {
+        camCtrlZoomLabel.textContent = Math.round(maskScale * 100) + '%';
+      }
+    }
+
+    if (camMaskCtrlToggleBtn && camMaskControlsPanel) {
+      camMaskCtrlToggleBtn.addEventListener('click', () => {
+        camMaskControlsPanel.classList.toggle('hidden');
+        updateCamControlsUI();
+      });
+    }
+    if (camCtrlCloseBtn && camMaskControlsPanel) {
+      camCtrlCloseBtn.addEventListener('click', () => {
+        camMaskControlsPanel.classList.add('hidden');
+      });
+    }
+
+    const camNudgeUp = document.getElementById('camNudgeUp');
+    const camNudgeDown = document.getElementById('camNudgeDown');
+    const camNudgeLeft = document.getElementById('camNudgeLeft');
+    const camNudgeRight = document.getElementById('camNudgeRight');
+    const camCtrlCenterBtn = document.getElementById('camCtrlCenterBtn');
+    const camCtrlZoomIn = document.getElementById('camCtrlZoomIn');
+    const camCtrlZoomOut = document.getElementById('camCtrlZoomOut');
+
+    if (camNudgeUp) camNudgeUp.addEventListener('click', () => setMaskPosition(maskOffsetX, maskOffsetY - 0.05));
+    if (camNudgeDown) camNudgeDown.addEventListener('click', () => setMaskPosition(maskOffsetX, maskOffsetY + 0.05));
+    if (camNudgeLeft) camNudgeLeft.addEventListener('click', () => setMaskPosition(maskOffsetX - 0.05, maskOffsetY));
+    if (camNudgeRight) camNudgeRight.addEventListener('click', () => setMaskPosition(maskOffsetX + 0.05, maskOffsetY));
+    if (camCtrlCenterBtn) camCtrlCenterBtn.addEventListener('click', resetMaskTransform);
+    if (camCtrlZoomIn) camCtrlZoomIn.addEventListener('click', () => { setMaskScale(maskScale + 0.1); updateCamControlsUI(); });
+    if (camCtrlZoomOut) camCtrlZoomOut.addEventListener('click', () => { setMaskScale(maskScale - 0.1); updateCamControlsUI(); });
+
+    // Camera Prompt Banner Cycling
+    let activePromptIndex = 0;
+    function cycleCameraPrompt() {
+      const activePrompts = (appConfig.prompts && appConfig.prompts.length) ? appConfig.prompts : prompts;
+      if (!activePrompts.length) return;
+      activePromptIndex = (activePromptIndex + 1) % activePrompts.length;
+      const p = activePrompts[activePromptIndex];
+      const camPromptEl = document.getElementById('camPromptText');
+      if (camPromptEl) camPromptEl.textContent = p;
+      const homePromptEl = document.getElementById('homePromptText');
+      if (homePromptEl) homePromptEl.textContent = p;
+    }
+
+    const camPromptBanner = document.getElementById('camPromptBanner');
+    const camNextPromptBtn = document.getElementById('camNextPromptBtn');
+    if (camPromptBanner) camPromptBanner.addEventListener('click', (e) => {
+      cycleCameraPrompt();
+    });
+
+    // Attach dragging to prepare preview box and camera viewfinder
+    const prepareBoxEl = document.querySelector('.prepare-preview-box');
+    if (prepareBoxEl) {
+      setupDraggableMask(prepareBoxEl, () => updatePreparePreview());
+    }
+    const cameraViewfinderEl = document.querySelector('.viewfinder');
+    if (cameraViewfinderEl) {
+      setupDraggableMask(cameraViewfinderEl, () => sizeOverlay());
+    }
 
     // --- Camera Screen Logic ---
     function sizeOverlay() {
@@ -2816,7 +3591,7 @@
       }, 'image/png');
     }
 
-    document.getElementById('cameraBackBtn').addEventListener('click', () => navigateTo('prepare'));
+    document.getElementById('cameraBackBtn').addEventListener('click', () => navigateTo('gallery'));
     document.getElementById('switchCameraBtn').addEventListener('click', switchCamera);
     document.getElementById('cameraGalleryShortcutBtn').addEventListener('click', () => navigateTo('gallery'));
     document.getElementById('retryCameraBtn').addEventListener('click', startCamera);
@@ -3025,22 +3800,38 @@
       if (shBtn) shBtn.style.display = (cfg.allowShare !== false) ? '' : 'none';
       updateResultButtonsLockStatus();
 
-      // 4. Update prompts list reference
+      // 4. Update prompts list reference and update active prompt labels
       if (cfg.prompts && cfg.prompts.length) {
         prompts.length = 0;
         cfg.prompts.forEach(p => prompts.push(p));
       }
+      const homePromptEl = document.getElementById('homePromptText');
+      if (homePromptEl && prompts.length && !prompts.includes(homePromptEl.textContent)) {
+        homePromptEl.textContent = prompts[0];
+      }
+      const camPromptEl = document.getElementById('camPromptText');
+      if (camPromptEl && prompts.length && !prompts.includes(camPromptEl.textContent)) {
+        camPromptEl.textContent = prompts[0];
+      }
 
-      // 5. Gate enforcement
+      // 5. Presets validation: Ensure selectedMask is not a disabled preset
+      const disabled = cfg.disabledPresets || [];
+      const visibleMasks = masks.filter(m => !disabled.includes(m.id));
+      if (selectedMask && disabled.includes(selectedMask.id)) {
+        selectedMask = visibleMasks[0] || masks[0];
+      }
+
+      // 6. Refresh gallery if currently active
+      if (currentScreen === 'gallery') {
+        renderMaskGrid();
+      }
+
+      // 7. Gate enforcement
       if (isGateRequired() && currentScreen !== 'gate' && currentScreen !== 'admin') {
         navigateTo('gate', false);
       } else if (!isGateRequired() && currentScreen === 'gate') {
         navigateTo('home', false);
       }
-
-      // 6. Refresh views if active
-      if (currentScreen === 'gallery') renderMaskGrid();
-      if (currentScreen === 'admin') renderAdminDashboard();
     }
 
     // --- Gate Screen Handler ---
@@ -3181,20 +3972,24 @@
           const user = await window.appCloudSync.signInGoogle();
           if (!user || !user.email) return;
 
-          if (!appConfig.adminGoogleEmail) {
-            appConfig.adminGoogleEmail = user.email.toLowerCase();
+          const allowedList = getAuthorizedGoogleEmails();
+          const emailLower = user.email.toLowerCase();
+
+          if (allowedList.length === 0) {
+            appConfig.adminGoogleEmails = [emailLower];
+            appConfig.adminGoogleEmail = emailLower;
             await saveConfigToCloud(appConfig);
             setAdminSession(true);
             hideAdminLoginModal();
             navigateTo('admin');
             showToast('חשבון ' + user.email + ' הוגדר כמנהל ראשי.');
-          } else if (user.email.toLowerCase() === appConfig.adminGoogleEmail.toLowerCase()) {
+          } else if (allowedList.some(e => e.toLowerCase() === emailLower)) {
             setAdminSession(true);
             hideAdminLoginModal();
             navigateTo('admin');
             showToast('כניסת מנהל עם Google אושרה.');
           } else {
-            alert('חשבון ' + user.email + ' אינו מוגדר כמנהל האתר.');
+            alert('חשבון ' + user.email + ' אינו מוגדר ברשימת המנהלים המורשים.\n\nניתן להיכנס באמצעות סיסמת מנהל ולהוסיף חשבון זה בלשונית אבטחה.');
           }
         } catch (err) {
           console.warn('Google login failed:', err);
@@ -3271,18 +4066,18 @@
     });
 
     function renderAdminDashboard() {
-      // 1. Access Mode
-      const isPasswordMode = appConfig.accessMode === 'password';
+      // 1. Access & Workshop mode
       const radOpen = document.getElementById('accessModeOpen');
       const radPwd = document.getElementById('accessModePassword');
-      const gatePwdGroup = document.getElementById('gatePasswordGroup');
-      const gatePwdInput = document.getElementById('settingGatePassword');
+      const isPasswordMode = appConfig.accessMode === 'password';
       if (radOpen) radOpen.checked = !isPasswordMode;
       if (radPwd) radPwd.checked = isPasswordMode;
+
+      const gatePwdGroup = document.getElementById('gatePasswordGroup');
+      const gatePwdInput = document.getElementById('settingGatePassword');
       if (gatePwdGroup) gatePwdGroup.style.display = isPasswordMode ? 'block' : 'none';
       if (gatePwdInput) gatePwdInput.value = appConfig.gatePassword || '';
 
-      // 2. Workshop Lock
       const chkWorkshop = document.getElementById('settingWorkshopLock');
       const workshopCodeGroup = document.getElementById('workshopCodeGroup');
       const workshopCodeInput = document.getElementById('settingWorkshopCode');
@@ -3290,7 +4085,7 @@
       if (workshopCodeGroup) workshopCodeGroup.style.display = appConfig.workshopLock ? 'block' : 'none';
       if (workshopCodeInput) workshopCodeInput.value = appConfig.workshopCode || '';
 
-      // 3. Feature Flags
+      // 2. Features
       const chkCustom = document.getElementById('settingAllowCustomMask');
       const chkDl = document.getElementById('settingAllowDownload');
       const chkSh = document.getElementById('settingAllowShare');
@@ -3300,22 +4095,48 @@
       if (chkSh) chkSh.checked = appConfig.allowShare !== false;
       if (selColor) selColor.value = appConfig.colorMode || 'user';
 
-      // 4. Presets Grid
+      // 3. Presets
       renderAdminPresetsList();
 
-      // 5. Prompts List
+      // 4. Prompts
       renderAdminPromptsList();
 
-      // 6. Security & Google status
-      const googleStatus = document.getElementById('adminGoogleAccountStatus');
-      if (googleStatus) {
-        googleStatus.textContent = appConfig.adminGoogleEmail
-          ? `מחובר לחשבון: ${appConfig.adminGoogleEmail}`
-          : 'לא הוגדר חשבון Google מקושר';
-      }
+      // 5. Google Accounts List
+      renderAdminGoogleAccountsList();
 
-      // Update sync badge
       updateCloudSyncBadge(window.appCloudSync && window.appCloudSync.isFirestoreConnected);
+    }
+
+    function renderAdminGoogleAccountsList() {
+      const container = document.getElementById('adminGoogleAccountsList');
+      if (!container) return;
+      container.innerHTML = '';
+      const list = getAuthorizedGoogleEmails();
+      if (list.length === 0) {
+        container.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:4px 0;">אין חשבונות Google מחוברים כרגע.</div>';
+        return;
+      }
+      list.forEach((email, idx) => {
+        const item = document.createElement('div');
+        item.className = 'google-account-item';
+        item.innerHTML = `
+          <span>${email}</span>
+          <button type="button" class="remove-btn" title="הסרת חשבון">הסר</button>
+        `;
+        item.querySelector('.remove-btn').addEventListener('click', async () => {
+          if (confirm('להסיר את ' + email + ' מרשימת המנהלים?')) {
+            list.splice(idx, 1);
+            appConfig.adminGoogleEmails = [...list];
+            if (appConfig.adminGoogleEmail && appConfig.adminGoogleEmail.toLowerCase() === email.toLowerCase()) {
+              appConfig.adminGoogleEmail = list[0] || null;
+            }
+            await saveConfigToCloud(appConfig);
+            renderAdminGoogleAccountsList();
+            showToast('החשבון הוסר.');
+          }
+        });
+        container.appendChild(item);
+      });
     }
 
     const radOpen = document.getElementById('accessModeOpen');
@@ -3360,15 +4181,47 @@
         const div = document.createElement('div');
         div.className = 'prompt-item';
         div.innerHTML = `
-          <span>${text}</span>
-          <button type="button" class="delete-prompt-btn" data-index="${index}" title="מחיקה">
-            <svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
+          <span style="flex:1;text-align:right;">${text}</span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <button type="button" class="edit-prompt-btn" data-index="${index}" title="עריכת הנחיה" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;">
+              <svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            </button>
+            <button type="button" class="delete-prompt-btn" data-index="${index}" title="מחיקה">
+              <svg class="icon-svg" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
         `;
         div.querySelector('.delete-prompt-btn').addEventListener('click', () => {
           items.splice(index, 1);
           appConfig.prompts = [...items];
           renderAdminPromptsList();
+        });
+        div.querySelector('.edit-prompt-btn').addEventListener('click', () => {
+          const currentText = items[index];
+          div.innerHTML = `
+            <div style="display:flex;gap:6px;width:100%;align-items:center;">
+              <input type="text" class="custom-input inline-prompt-input" style="font-size:13px;padding:6px 10px;flex:1;" value="${currentText.replace(/"/g, '&quot;')}" />
+              <button type="button" class="primary save-prompt-btn" style="min-height:30px;padding:4px 10px;font-size:12px;">שמור</button>
+              <button type="button" class="secondary cancel-prompt-btn" style="min-height:30px;padding:4px 10px;font-size:12px;">בטל</button>
+            </div>
+          `;
+          const input = div.querySelector('.inline-prompt-input');
+          input.focus();
+          div.querySelector('.save-prompt-btn').addEventListener('click', () => {
+            const val = input.value.trim();
+            if (val) {
+              items[index] = val;
+              appConfig.prompts = [...items];
+              renderAdminPromptsList();
+            }
+          });
+          div.querySelector('.cancel-prompt-btn').addEventListener('click', () => {
+            renderAdminPromptsList();
+          });
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') div.querySelector('.save-prompt-btn').click();
+            if (e.key === 'Escape') div.querySelector('.cancel-prompt-btn').click();
+          });
         });
         list.appendChild(div);
       });
@@ -3405,38 +4258,70 @@
         if (pwd.length < 4) {
           if (adminPasswordChangeMsg) {
             adminPasswordChangeMsg.textContent = 'נא להזין סיסמה בת 4 תווים לפחות.';
+            adminPasswordChangeMsg.className = 'auth-error-msg';
             adminPasswordChangeMsg.classList.remove('hidden');
-            adminPasswordChangeMsg.style.color = '#ef4444';
           }
           return;
         }
         appConfig.adminPasswordHash = await sha256(pwd);
         newAdminPasswordInput.value = '';
-        await saveConfigToCloud(appConfig);
+        saveConfigToCloud(appConfig).catch(() => {});
         if (adminPasswordChangeMsg) {
-          adminPasswordChangeMsg.textContent = 'סיסמת המנהל עודכנה בהצלחה!';
+          adminPasswordChangeMsg.textContent = '✅ סיסמת המנהל עודכנה בהצלחה!';
+          adminPasswordChangeMsg.className = 'auth-success-msg';
           adminPasswordChangeMsg.classList.remove('hidden');
-          adminPasswordChangeMsg.style.color = '#15803d';
-          setTimeout(() => adminPasswordChangeMsg.classList.add('hidden'), 3500);
+          setTimeout(() => adminPasswordChangeMsg.classList.add('hidden'), 4000);
         }
-        showToast('סיסמת המנהל עודכנה!');
+        showToast('סיסמת המנהל עודכנה בהצלחה!');
       });
     }
 
-    // Google Connect in Security Tab
+    // Multi-Account Google in Security Tab
     const adminGoogleConnectBtn = document.getElementById('adminGoogleConnectBtn');
     if (adminGoogleConnectBtn) {
       adminGoogleConnectBtn.addEventListener('click', async () => {
         try {
           const user = await window.appCloudSync.signInGoogle();
-          if (user && user.email) {
-            appConfig.adminGoogleEmail = user.email.toLowerCase();
+          if (!user || !user.email) return;
+          const emailLower = user.email.toLowerCase();
+          const list = getAuthorizedGoogleEmails();
+          if (!list.includes(emailLower)) {
+            list.push(emailLower);
+            appConfig.adminGoogleEmails = [...list];
+            appConfig.adminGoogleEmail = emailLower;
             await saveConfigToCloud(appConfig);
-            renderAdminDashboard();
-            showToast('חשבון Google עודכן בהצלחה!');
+            renderAdminGoogleAccountsList();
+            showToast('חשבון ' + user.email + ' נוסף כמנהל מורשה!');
+          } else {
+            showToast('חשבון ' + user.email + ' כבר מופיע ברשימת המנהלים.');
           }
-        } catch(e) {
-          alert('חיבור חשבון Google נכשל: ' + e.message);
+        } catch(err) {
+          console.warn('Google connect failed:', err);
+          alert('חיבור חשבון Google נכשל: ' + (err.message || ''));
+        }
+      });
+    }
+
+    const addGoogleAdminEmailBtn = document.getElementById('addGoogleAdminEmailBtn');
+    const newGoogleAdminEmailInput = document.getElementById('newGoogleAdminEmailInput');
+    if (addGoogleAdminEmailBtn && newGoogleAdminEmailInput) {
+      addGoogleAdminEmailBtn.addEventListener('click', async () => {
+        const val = newGoogleAdminEmailInput.value.trim().toLowerCase();
+        if (!val || !val.includes('@')) {
+          alert('נא להזין כתובת דוא"ל תקינה.');
+          return;
+        }
+        const list = getAuthorizedGoogleEmails();
+        if (!list.includes(val)) {
+          list.push(val);
+          appConfig.adminGoogleEmails = [...list];
+          if (!appConfig.adminGoogleEmail) appConfig.adminGoogleEmail = val;
+          await saveConfigToCloud(appConfig);
+          newGoogleAdminEmailInput.value = '';
+          renderAdminGoogleAccountsList();
+          showToast('חשבון ' + val + ' נוסף בהצלחה לרשימת המנהלים!');
+        } else {
+          showToast('חשבון זה כבר מוגדר כמנהל.');
         }
       });
     }
@@ -3477,16 +4362,57 @@
       });
     }
 
-    // Admin Exit Button
-    const adminExitBtn = document.getElementById('adminExitBtn');
-    if (adminExitBtn) {
-      adminExitBtn.addEventListener('click', () => {
+    // Admin Navigation & Action Handlers
+    const adminGoToAppBtn = document.getElementById('adminGoToAppBtn');
+    if (adminGoToAppBtn) {
+      adminGoToAppBtn.addEventListener('click', () => {
         if (window.location.pathname.endsWith('/admin')) {
           history.pushState({ screen: 'home' }, '', '/#home');
         } else {
           history.pushState({ screen: 'home' }, '', '#home');
         }
         navigateTo('home');
+      });
+    }
+
+    const adminTestParticipantBtn = document.getElementById('adminTestParticipantBtn');
+    if (adminTestParticipantBtn) {
+      adminTestParticipantBtn.addEventListener('click', () => {
+        // Disconnect admin session and reset unlocked flags so admin can test the exact participant flow!
+        setAdminSession(false);
+        localStorage.removeItem(STORAGE_KEY_GATE);
+        localStorage.removeItem(STORAGE_KEY_WORKSHOP);
+        if (window.location.pathname.endsWith('/admin')) {
+          history.pushState({ screen: 'home' }, '', '/#home');
+        } else {
+          history.pushState({ screen: 'home' }, '', '#home');
+        }
+        showToast('עברת למצב בדיקת משתתף סדנה.');
+        navigateTo('home');
+      });
+    }
+
+    const adminExitBtn = document.getElementById('adminExitBtn');
+    if (adminExitBtn) {
+      adminExitBtn.addEventListener('click', () => {
+        setAdminSession(false);
+        if (window.appCloudSync && window.appCloudSync.signOutGoogle) {
+          window.appCloudSync.signOutGoogle().catch(() => {});
+        }
+        if (window.location.pathname.endsWith('/admin')) {
+          history.pushState({ screen: 'home' }, '', '/#home');
+        } else {
+          history.pushState({ screen: 'home' }, '', '#home');
+        }
+        showToast('התנתקת מחשבון המנהל.');
+        navigateTo('home');
+      });
+    }
+
+    const adminQuickReturnBtn = document.getElementById('adminQuickReturnBtn');
+    if (adminQuickReturnBtn) {
+      adminQuickReturnBtn.addEventListener('click', () => {
+        navigateTo('admin');
       });
     }
 
@@ -3522,6 +4448,8 @@
       const pathIsAdmin = window.location.pathname.endsWith('/admin') ||
                           window.location.hash === '#admin' ||
                           new URLSearchParams(window.location.search).has('admin');
+
+      updateAdminBarIndicator();
 
       if (pathIsAdmin) {
         if (isAdminSession()) {
