@@ -1497,7 +1497,7 @@
     /* Admin Layout & Panes */
     .admin-layout {
       width: 100%;
-      max-width: 680px;
+      max-width: 780px;
       margin: 0 auto;
       padding: 20px clamp(14px, 3vw, 24px);
     }
@@ -1506,8 +1506,23 @@
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--line);
-      padding-bottom: 14px;
-      margin-bottom: 16px;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .admin-title-area {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .admin-nav-actions-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
     }
     .sync-badge {
       display: inline-flex;
@@ -1531,9 +1546,10 @@
       display: flex;
       gap: 6px;
       overflow-x: auto;
-      padding-bottom: 6px;
-      margin-bottom: 18px;
+      padding-bottom: 2px;
+      margin-bottom: 0;
       scrollbar-width: none;
+      flex-wrap: wrap;
     }
     .admin-tabs-nav::-webkit-scrollbar { display: none; }
     .admin-tab {
@@ -1950,8 +1966,9 @@
     <!-- 7. Admin Dashboard Screen (ניהול והגדרות) -->
     <section class="screen" id="adminPanelScreen">
       <div class="card admin-layout">
+        <!-- 1. כותרת ומצב סנכרון -->
         <div class="admin-header-row">
-          <div>
+          <div class="admin-title-area">
             <h2 style="margin:0;font-size:22px;font-weight:800;">פאנל ניהול האפליקציה</h2>
             <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap;">
               <div id="cloudSyncStatusBadge" class="sync-badge" title="לחצו למידע על סנכרון Firestore">
@@ -1963,6 +1980,20 @@
               </a>
             </div>
           </div>
+        </div>
+
+        <!-- 2. סרגל עליון: תפריט בצד ימין, 3 הכפתורים בצד שמאל -->
+        <div class="admin-nav-actions-row">
+          <!-- תפריט בצד ימין -->
+          <div class="admin-tabs-nav">
+            <button class="admin-tab active" data-tab="tabAccess">גישה וסדנה</button>
+            <button class="admin-tab" data-tab="tabFeatures">פיצ'רים</button>
+            <button class="admin-tab" data-tab="tabPresets">תבניות</button>
+            <button class="admin-tab" data-tab="tabPrompts">הנחיות</button>
+            <button class="admin-tab" data-tab="tabSecurity">אבטחה</button>
+          </div>
+
+          <!-- 3 הכפתורים בצד שמאל -->
           <div class="admin-header-actions">
             <button class="primary admin-app-btn" id="adminGoToAppBtn" title="כניסה לאפליקציה תוך שמירה על הרשאות מנהל">
               <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
@@ -1976,15 +2007,6 @@
               <span>התנתק</span>
             </button>
           </div>
-        </div>
-
-        <!-- Admin Tabs -->
-        <div class="admin-tabs-nav">
-          <button class="admin-tab active" data-tab="tabAccess">גישה וסדנה</button>
-          <button class="admin-tab" data-tab="tabFeatures">פיצ'רים</button>
-          <button class="admin-tab" data-tab="tabPresets">תבניות</button>
-          <button class="admin-tab" data-tab="tabPrompts">הנחיות</button>
-          <button class="admin-tab" data-tab="tabSecurity">אבטחה</button>
         </div>
 
         <!-- Tab 1: Access & Workshop -->
