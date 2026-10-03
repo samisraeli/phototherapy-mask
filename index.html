@@ -842,53 +842,118 @@
       left: 0;
       right: 0;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      padding: max(12px, env(safe-area-inset-top)) 14px 10px;
-      background: linear-gradient(to bottom, rgba(0,0,0,.75), transparent);
-      z-index: 10;
+      padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+      background: linear-gradient(to bottom, rgba(0,0,0,.85) 0%, rgba(0,0,0,.55) 75%, transparent 100%);
+      z-index: 30;
+      gap: 8px;
     }
-    .camera-top-bar button {
+    .cam-top-pill-btn {
       background: rgba(255,255,255,.2);
       color: #fff;
       border: 1px solid rgba(255,255,255,.3);
       backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       min-height: 36px;
-      padding: 6px 12px;
+      padding: 6px 14px;
       font-size: 13px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      flex-shrink: 0;
     }
+    .cam-top-pill-btn:active { transform: scale(.96); }
+
     .camera-title-badge {
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
     }
-    .camera-title-badge strong { font-size: 14px; }
-    .camera-title-badge small { font-size: 11px; opacity: .75; }
-
+    .cam-title-top-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .cam-title-top-row strong {
+      font-size: 14.5px;
+      font-weight: 800;
+      color: #ffffff;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+      white-space: nowrap;
+    }
     .cam-zoom-badge {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      background: rgba(0,0,0,.4);
+      gap: 5px;
+      background: rgba(0,0,0,.55);
       padding: 2px 8px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.2);
+      border: 1px solid rgba(255,255,255,.25);
       font-size: 12px;
+      color: #ffffff;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
-    .cam-reset-btn {
+    .cam-zoom-btn {
+      width: 24px;
+      height: 24px;
       min-height: 24px;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,.25);
+      border: none;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cam-zoom-btn:active { transform: scale(0.92); }
+    .cam-reset-btn {
+      min-height: 22px;
       padding: 2px 8px;
       font-size: 11px;
       font-weight: 700;
-      background: rgba(255,255,255,.2);
+      background: rgba(255,255,255,.22);
       border: 1px solid rgba(255,255,255,.3);
-      color: #fff;
+      color: #ffffff;
       border-radius: 999px;
       cursor: pointer;
-      margin-right: 4px;
+      margin-right: 2px;
     }
     .cam-reset-btn:active { transform: scale(.95); }
+
+    .camera-drag-instruction {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(0, 0, 0, 0.65);
+      color: #f1f5f9;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      pointer-events: none;
+      max-width: 95%;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      transition: opacity .4s ease;
+    }
     .viewfinder {
       position: absolute;
       inset: 0;
@@ -1251,7 +1316,7 @@
     /* Camera Prompt Banner */
     .cam-prompt-banner {
       position: absolute;
-      top: 14px;
+      top: 86px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 25;
@@ -1353,9 +1418,9 @@
     }
     .app-toast {
       position: fixed;
-      top: 18px;
+      bottom: 85px;
       left: 50%;
-      transform: translateX(-50%) translateY(-30px);
+      transform: translateX(-50%) translateY(30px);
       background: rgba(17, 24, 39, .95);
       color: #ffffff;
       padding: 10px 20px;
@@ -1630,10 +1695,10 @@
     .admin-sidebar-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(15, 23, 42, 0.38);
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-      z-index: 998;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      z-index: 9998;
       transition: opacity .25s ease;
     }
     .admin-sidebar-backdrop.hidden {
@@ -1642,24 +1707,27 @@
 
     .admin-sidebar {
       position: fixed;
-      top: 16px;
-      right: 16px;
-      bottom: 16px;
+      top: 0;
+      right: 0;
+      bottom: 0;
       width: 290px;
-      max-width: calc(100vw - 32px);
+      max-width: 85vw;
       background: #ffffff;
-      border-radius: 24px;
-      box-shadow: -10px 14px 44px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
-      padding: 22px 18px;
-      z-index: 999;
+      z-index: 9999;
       display: flex;
       flex-direction: column;
-      transform: translateX(calc(100% + 28px));
-      transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: -10px 0 35px rgba(0, 0, 0, 0.2);
+      padding: 24px 18px;
+      transform: translateX(115%);
+      transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1), visibility .28s;
+      visibility: hidden;
+      pointer-events: none;
       box-sizing: border-box;
     }
     .admin-sidebar.open {
       transform: translateX(0);
+      visibility: visible;
+      pointer-events: auto;
     }
 
     .admin-sidebar-header {
@@ -2301,9 +2369,7 @@
     <!-- 7. Admin Dashboard Screen (ניהול והגדרות) -->
     <section class="screen" id="adminPanelScreen">
       <!-- Backdrop for mobile/desktop drawer -->
-      <div class="admin-sidebar-backdrop hidden" id="adminSidebarBackdrop"></div>
-
-      <div class="admin-dashboard-frame">
+            <div class="admin-dashboard-frame">
         <!-- Main Card on Left -->
         <div class="admin-main-card">
           <!-- 1. Header: Toggle Button, Title, Status Badge & 3 Action Buttons -->
@@ -2509,40 +2575,7 @@
         </div>
       </div>
 
-      <!-- Dedicated Floating Sidebar Drawer on the Right (תפריט ניהול) -->
-      <aside class="admin-sidebar" id="adminSidebar">
-        <div class="admin-sidebar-header">
-          <h3 class="admin-sidebar-title">תפריט ניהול</h3>
-          <button type="button" class="admin-sidebar-close" id="adminSidebarCloseBtn" title="סגירת תפריט">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
-
-        <div class="admin-sidebar-nav">
-          <button class="admin-tab active" data-tab="tabAccess">
-            <span>גישה וסדנה</span>
-            <svg class="tab-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          </button>
-          <button class="admin-tab" data-tab="tabFeatures">
-            <span>פיצ'רים</span>
-            <svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4z"></path></svg>
-          </button>
-          <button class="admin-tab" data-tab="tabPresets">
-            <span>תבניות</span>
-            <svg class="tab-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          </button>
-          <button class="admin-tab" data-tab="tabPrompts">
-            <span>הנחיות</span>
-            <svg class="tab-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-          </button>
-          <button class="admin-tab" data-tab="tabSecurity">
-            <span>אבטחה</span>
-            <svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          </button>
-        </div>
-      </aside>
-    </div>
-  </section>
+      </section>
 
   </main>
 
@@ -2622,28 +2655,68 @@
     </div>
   </div>
 
+  <!-- Dedicated Floating Sidebar Drawer on the Right (תפריט ניהול) -->
+  <div class="admin-sidebar-backdrop hidden" id="adminSidebarBackdrop"></div>
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-sidebar-header">
+      <h3 class="admin-sidebar-title">תפריט ניהול</h3>
+      <button type="button" class="admin-sidebar-close" id="adminSidebarCloseBtn" title="סגירת תפריט">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="admin-sidebar-nav">
+      <button class="admin-tab active" data-tab="tabAccess">
+        <span>גישה וסדנה</span>
+        <svg class="tab-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      </button>
+      <button class="admin-tab" data-tab="tabFeatures">
+        <span>פיצ'רים</span>
+        <svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4z"></path></svg>
+      </button>
+      <button class="admin-tab" data-tab="tabPresets">
+        <span>תבניות</span>
+        <svg class="tab-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      </button>
+      <button class="admin-tab" data-tab="tabPrompts">
+        <span>הנחיות</span>
+        <svg class="tab-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+      </button>
+      <button class="admin-tab" data-tab="tabSecurity">
+        <span>אבטחה</span>
+        <svg class="tab-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+      </button>
+    </div>
+  </aside>
+
   <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
 
   <!-- 5. Standalone Fixed Fullscreen Camera Screen -->
   <div class="camera-shell hidden" id="cameraShell">
     <div class="camera-top-bar">
-      <button id="cameraBackBtn">
+      <button id="cameraBackBtn" class="cam-top-pill-btn">
         <svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         <span>חזרה</span>
       </button>
 
       <div class="camera-title-badge">
-        <strong id="cameraMaskName">שקף</strong>
-        <div class="cam-zoom-badge">
-          <span>זום:</span>
-          <button class="cam-zoom-btn" id="camZoomOutBtn">−</button>
-          <span id="camZoomLabel">100%</span>
-          <button class="cam-zoom-btn" id="camZoomInBtn">+</button>
-          <button type="button" class="cam-reset-btn" id="camResetPosBtn" title="איפוס מיקום למרכז">מרכוז</button>
+        <div class="cam-title-top-row">
+          <strong id="cameraMaskName">שקף</strong>
+          <div class="cam-zoom-badge">
+            <span>זום:</span>
+            <button class="cam-zoom-btn" id="camZoomOutBtn" title="הקטנת שקף">−</button>
+            <span id="camZoomLabel">100%</span>
+            <button class="cam-zoom-btn" id="camZoomInBtn" title="הגדלת שקף">+</button>
+            <button type="button" class="cam-reset-btn" id="camResetPosBtn" title="איפוס מיקום למרכז">מרכוז</button>
+          </div>
+        </div>
+        <div class="camera-drag-instruction" id="viewfinderDragHint">
+          <svg class="icon-svg" style="width:12px;height:12px;" viewBox="0 0 24 24"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
+          <span>גררו עם האצבע כדי למקם את השקף</span>
         </div>
       </div>
 
-      <button id="cameraColorToggleBtn">
+      <button id="cameraColorToggleBtn" class="cam-top-pill-btn">
         <span class="color-dot black" id="camColorDot"></span>
         <span id="camColorLabel">שחור</span>
       </button>
@@ -2655,11 +2728,6 @@
         <span style="font-size:14px;">💡</span>
         <span class="cam-prompt-text" id="camPromptText">הנחיה לצילום...</span>
         <button type="button" class="cam-prompt-cycle-btn" id="camNextPromptBtn" title="הנחיה הבאה">⇄</button>
-      </div>
-
-      <div class="viewfinder-drag-hint" id="viewfinderDragHint">
-        <svg class="icon-svg" style="width:13px;height:13px;" viewBox="0 0 24 24"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
-        <span>גררו עם האצבע כדי למקם את השקף</span>
       </div>
 
       <video id="video" autoplay playsinline webkit-playsinline muted></video>
@@ -3872,6 +3940,9 @@
       const maskNameEl = document.getElementById('cameraMaskName');
       if (maskNameEl) maskNameEl.textContent = selectedMask.name;
 
+      const dragHintEl = document.getElementById('viewfinderDragHint');
+      if (dragHintEl) dragHintEl.style.opacity = '1';
+
       const switchBtn = document.getElementById('switchCameraBtn');
       if (switchBtn) {
         switchBtn.title = cameraFacingMode === 'environment' ? 'מעבר למצלמה קדמית' : 'מעבר למצלמה אחורית';
@@ -4513,6 +4584,7 @@
     });
 
     function renderAdminDashboard() {
+      toggleAdminSidebar(false);
       // 1. Access & Workshop mode
       const radOpen = document.getElementById('accessModeOpen');
       const radPwd = document.getElementById('accessModePassword');
