@@ -1263,8 +1263,8 @@
     /* Camera Floating Mask Adjust Toolbar */
     .cam-mask-ctrl-toggle {
       position: absolute;
-      bottom: 20px;
-      right: 18px;
+      bottom: 116px;
+      right: 16px;
       z-index: 25;
       background: rgba(15, 23, 42, 0.75);
       backdrop-filter: blur(10px);
@@ -1286,8 +1286,8 @@
 
     .cam-mask-controls-panel {
       position: absolute;
-      bottom: 70px;
-      right: 18px;
+      bottom: 166px;
+      right: 16px;
       z-index: 25;
       background: rgba(15, 23, 42, 0.88);
       backdrop-filter: blur(14px);
@@ -1962,8 +1962,21 @@
     .admin-header-actions {
       display: flex;
       align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .admin-nav-actions {
+      display: flex;
+      align-items: center;
       gap: 8px;
       flex-wrap: wrap;
+    }
+    .admin-session-actions {
+      display: flex;
+      align-items: center;
+      border-inline-start: 1.5px solid var(--line);
+      padding-inline-start: 14px;
+      margin-inline-start: 4px;
     }
 
     .admin-app-btn {
@@ -2011,15 +2024,17 @@
       border-radius: 999px;
       background: #ffffff;
       border: 1px solid var(--line);
-      color: #334155;
+      color: #64748b;
       display: inline-flex;
       align-items: center;
       gap: 6px;
       cursor: pointer;
+      transition: all .15s ease;
     }
     .admin-exit-pill-btn:hover {
-      background: #f8fafc;
-      color: var(--ink);
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #ef4444;
     }
 
     .sync-badge {
@@ -2053,7 +2068,28 @@
         gap: 16px;
       }
       .admin-header-actions {
-        justify-content: flex-start;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+      }
+      .admin-nav-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        width: 100%;
+      }
+      .admin-session-actions {
+        border-inline-start: none;
+        border-top: 1px solid var(--line);
+        padding-inline-start: 0;
+        padding-top: 10px;
+        margin-inline-start: 0;
+        width: 100%;
+      }
+      .admin-session-actions .admin-exit-pill-btn {
+        width: 100%;
+        justify-content: center;
       }
       .admin-sidebar {
         top: 0;
@@ -2293,12 +2329,13 @@
       height: 55px;
       border-radius: 8px;
       overflow: hidden;
-      background: #111827;
+      background: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      border: 1px solid rgba(0,0,0,0.1);
+      border: 1.5px solid #cbd5e1;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     .preset-admin-canvas {
       width: 44px;
@@ -2404,8 +2441,12 @@
       height: 40px;
       border-radius: 6px;
       overflow: hidden;
-      background: #111827;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .stats-leader-info {
       flex: 1;
@@ -2771,19 +2812,23 @@
               </div>
             </div>
 
-            <!-- 3 Action Buttons on the Left -->
+            <!-- Action Buttons on the Left -->
             <div class="admin-header-actions">
-              <button class="primary admin-app-btn" id="adminGoToAppBtn" title="כניסה לאפליקציה תוך שמירה על הרשאות מנהל">
-                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                <span>כניסה לאפליקציה</span>
-              </button>
-              <button class="secondary admin-test-btn" id="adminTestParticipantBtn" title="יציאה מהרשאות מנהל לבדיקת חוויית המשתתף (יבקש סיסמת Gate וקוד סדנה בשמירה)">
-                <span>🧪 בדיקת מצב משתתף</span>
-              </button>
-              <button class="secondary admin-exit-pill-btn" id="adminExitBtn" title="התנתקות ויציאה">
-                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                <span>התנתק</span>
-              </button>
+              <div class="admin-nav-actions">
+                <button class="primary admin-app-btn" id="adminGoToAppBtn" title="כניסה לאפליקציה תוך שמירה על הרשאות מנהל">
+                  <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                  <span>כניסה לאפליקציה</span>
+                </button>
+                <button class="secondary admin-test-btn" id="adminTestParticipantBtn" title="יציאה מהרשאות מנהל לבדיקת חוויית המשתתף (יבקש סיסמת Gate וקוד סדנה בשמירה)">
+                  <span>🧪 בדיקת מצב משתתף</span>
+                </button>
+              </div>
+              <div class="admin-session-actions">
+                <button class="secondary admin-exit-pill-btn" id="adminExitBtn" title="התנתקות ויציאה">
+                  <svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                  <span>התנתק</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2940,9 +2985,9 @@
               ניתן להגדיר מספר חשבונות Google (למשל שני מנחי סדנה). כל חשבון ברשימה זו יוכל להתחבר בבלעדיות כמנהל.
             </div>
             <div id="adminGoogleAccountsList" class="google-accounts-list"></div>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <input type="email" id="newGoogleAdminEmailInput" class="custom-input" placeholder="כתובת Gmail להוספה (למשל: partner@gmail.com)" />
-              <button type="button" class="secondary" id="addGoogleAdminEmailBtn">הוסף חשבון</button>
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+              <input type="email" id="newGoogleAdminEmailInput" class="custom-input" placeholder="כתובת Gmail להוספה (למשל: partner@gmail.com)" style="flex:1;min-width:0;" />
+              <button type="button" class="secondary" id="addGoogleAdminEmailBtn" style="white-space:nowrap !important;flex-shrink:0;padding:10px 18px;min-width:115px;">הוסף חשבון</button>
             </div>
             <button type="button" class="secondary" id="adminGoogleConnectBtn" style="gap:8px;margin-top:10px;width:100%;">
               <span>+ חבר חשבון Google של מכשיר זה</span>
@@ -3160,13 +3205,6 @@
     </div>
 
     <div class="viewfinder" id="cameraViewfinder">
-      <!-- Live Intention Prompt Banner -->
-      <div class="cam-prompt-banner" id="camPromptBanner" title="לחצו להחלפת הנחיה">
-        <span style="font-size:14px;">💡</span>
-        <span class="cam-prompt-text" id="camPromptText">הנחיה לצילום...</span>
-        <button type="button" class="cam-prompt-cycle-btn" id="camNextPromptBtn" title="הנחיה הבאה">⇄</button>
-      </div>
-
       <video id="video" autoplay playsinline webkit-playsinline muted></video>
       <canvas id="cameraOverlay" aria-hidden="true"></canvas>
 
@@ -4206,6 +4244,7 @@
       // Preload image before navigation
       mask.image = await loadImage(personalDraftDataUrl);
       await savePersonalMask(mask);
+      recordAnalyticsEvent('customMask');
       selectedMask = mask;
       resetMaskTransform();
       startCamera();
@@ -4559,6 +4598,9 @@
       const url = URL.createObjectURL(imageBlob);
       downloadDataUrl(url, `shekef-photo-${Date.now()}.png`);
 
+      const reflection = document.getElementById('reflectionText')?.value?.trim();
+      recordAnalyticsEvent('save', { hasReflection: !!reflection });
+
       const btn = document.getElementById('downloadBtn');
       const originalHtml = btn.innerHTML;
       btn.innerHTML = `
@@ -4580,6 +4622,8 @@
         openWorkshopModal('share');
         return;
       }
+      const reflection = document.getElementById('reflectionText')?.value?.trim();
+      recordAnalyticsEvent('share', { hasReflection: !!reflection });
       if (!imageFile) return downloadImage();
       if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
         try {
@@ -5027,6 +5071,11 @@
         document.querySelectorAll('.admin-tab-pane').forEach(p => {
           p.classList.toggle('active', p.id === 'pane' + targetTab.charAt(0).toUpperCase() + targetTab.slice(1));
         });
+        if (targetTab === 'tabStats') {
+          renderAdminStats();
+        } else if (targetTab === 'tabPresets') {
+          renderAdminPresetsList();
+        }
         // Close drawer smoothly on selecting a tab
         toggleAdminSidebar(false);
       });
@@ -5085,6 +5134,7 @@
     }
 
     window.addEventListener('cloud-sync-ready', setupStatsSyncSubscription);
+    setupStatsSyncSubscription();
 
     function recordAnalyticsEvent(type, data = {}) {
       appStats = loadLocalStats();
@@ -5170,7 +5220,7 @@
           `;
           const cvs = item.querySelector('canvas');
           const ctx = cvs.getContext('2d');
-          drawMask(ctx, 32, 40, mask, 1);
+          renderPreview(ctx, 32, 40, mask, 'black', 1);
           container.appendChild(item);
         });
       }
@@ -5331,7 +5381,7 @@
         `;
         const canvas = card.querySelector('canvas');
         const ctx = canvas.getContext('2d');
-        drawMask(ctx, 44, 55, mask, 1);
+        renderPreview(ctx, 44, 55, mask, 'black', 1);
 
         const cb = card.querySelector('input');
         cb.addEventListener('change', () => {
