@@ -112,11 +112,101 @@
       return null;
     }
 
+        const FIRESTORE_STATS_BASE = "https://firestore.googleapis.com/v1/projects/phototherapy-mask/databases/(default)/documents/app_config/stats";
+
+    async function checkOrFetchStats(notifyCallback) {
+      if (db) {
+        try {
+          const statsRef = doc(db, "app_config", "stats");
+          const snap = await getDoc(statsRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            if (notifyCallback) notifyCallback(data);
+            if (typeof window.handleCloudStatsUpdate === 'function') {
+              window.handleCloudStatsUpdate(data);
+            }
+            return data;
+          }
+        } catch(e) {
+          console.warn("Firestore SDK stats fetch fallback to REST:", e.message || e);
+        }
+      }
+
+      try {
+        const res = await fetch(FIRESTORE_STATS_BASE);
+        if (res.ok) {
+          const data = await res.json();
+          const parsed = parseFirestoreDoc(data);
+          if (parsed) {
+            if (notifyCallback) notifyCallback(parsed);
+            if (typeof window.handleCloudStatsUpdate === 'function') {
+              window.handleCloudStatsUpdate(parsed);
+            }
+            return parsed;
+          }
+        }
+      } catch(e) {
+        console.warn("Firestore REST stats fetch error:", e.message || e);
+      }
+      return null;
+    }
+
     window.appCloudSync = {
       db,
       auth,
       isFirestoreConnected: false,
       checkConnection: () => checkOrFetchConfig(),
+      subscribeStats(callback) {
+        let unsub = () => {};
+        if (db) {
+          try {
+            const statsRef = doc(db, "app_config", "stats");
+            unsub = onSnapshot(statsRef, (snap) => {
+              if (snap.exists()) callback(snap.data());
+            }, (err) => {
+              console.warn("Stats snapshot error:", err.message);
+              checkOrFetchStats(callback);
+            });
+          } catch(e) {
+            console.warn("Stats snapshot setup error:", e);
+          }
+        }
+        checkOrFetchStats(callback);
+        return unsub;
+      },
+      async saveStats(statsData) {
+        let saved = false;
+        if (db) {
+          try {
+            const statsRef = doc(db, "app_config", "stats");
+            const savePromise = setDoc(statsRef, statsData, { merge: true });
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Timeout")), 2500)
+            );
+            await Promise.race([savePromise, timeoutPromise]);
+            saved = true;
+          } catch(e) {
+            console.warn("SDK stats save failed, trying REST:", e.message || e);
+          }
+        }
+
+        if (!saved) {
+          try {
+            const body = JSON.stringify(toFirestoreFields(statsData));
+            const fieldParams = Object.keys(statsData).map(f => 'updateMask.fieldPaths=' + encodeURIComponent(f)).join('&');
+            const patchUrl = `${FIRESTORE_STATS_BASE}?${fieldParams}`;
+            const res = await fetch(patchUrl, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body
+            });
+            if (res.ok) saved = true;
+          } catch(err) {
+            console.warn("REST stats save failed:", err.message || err);
+          }
+        }
+        return saved;
+      },
       subscribeConfig(callback) {
         let unsub = () => {};
         if (db) {
@@ -1361,13 +1451,14 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
-      max-width: 440px;
+      gap: 16px;
+      max-width: min(680px, 94vw);
       margin: 0 auto;
+      width: 100%;
     }
     .result-image-box {
       width: 100%;
-      max-width: min(90vw, 420px);
+      max-width: 100%;
       border-radius: 18px;
       background: #0b0f19;
       box-shadow: var(--shadow);
@@ -1383,7 +1474,7 @@
     .result-image-box img {
       width: 100%;
       height: auto;
-      max-height: 56vh;
+      max-height: 65vh;
       object-fit: contain;
       display: block;
       border-radius: 18px;
@@ -2105,6 +2196,286 @@
       font-size: 11px;
       margin-right: 4px;
     }
+  
+    /* Gallery Action Row & Color Button */
+    .gallery-actions-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .gallery-color-btn {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      min-height: 42px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      transition: all .15s ease;
+    }
+    .gallery-color-btn:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    /* Admin Presets Toolbar & Visual Cards */
+    .presets-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      padding: 12px 16px;
+      border-radius: 16px;
+    }
+    .presets-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .presets-tool-btn {
+      min-height: 34px !important;
+      padding: 4px 14px !important;
+      font-size: 13px !important;
+      border-radius: 999px !important;
+    }
+    .presets-count-badge {
+      font-size: 13px;
+      font-weight: 700;
+      color: #3b82f6;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 4px 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+    .presets-toggle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .preset-admin-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 16px;
+      border: 1.5px solid var(--line);
+      background: #ffffff;
+      cursor: pointer;
+      transition: all .15s ease;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .preset-admin-card:hover {
+      border-color: #cbd5e1;
+      background: #fcfcfb;
+    }
+    .preset-admin-card.active {
+      border-color: var(--ink);
+      background: #faf8f5;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .preset-admin-thumb-wrap {
+      width: 44px;
+      height: 55px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #111827;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    .preset-admin-canvas {
+      width: 44px;
+      height: 55px;
+      display: block;
+    }
+    .preset-admin-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .preset-admin-info strong {
+      font-size: 14px;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .preset-admin-state {
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .preset-admin-checkbox {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--ink);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Admin Statistics Tab Styling */
+    .stats-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stats-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .stats-kpi-card {
+      background: #faf8f5;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px 14px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stats-kpi-icon {
+      font-size: 22px;
+      margin-bottom: 2px;
+    }
+    .stats-kpi-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .stats-kpi-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .stats-section-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--ink);
+      margin: 18px 0 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stats-leaderboard {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+    .stats-leader-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+    .stats-leader-thumb {
+      width: 32px;
+      height: 40px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #111827;
+      flex-shrink: 0;
+    }
+    .stats-leader-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .stats-leader-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .stats-progress-track {
+      width: 100%;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .stats-progress-fill {
+      height: 100%;
+      background: #3b82f6;
+      border-radius: 999px;
+      transition: width .3s ease;
+    }
+    .stats-color-bar-wrap {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .stats-color-bar {
+      display: flex;
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    .stats-color-black {
+      background: #111827;
+      transition: width .3s ease;
+    }
+    .stats-color-white {
+      background: #e2e8f0;
+      transition: width .3s ease;
+    }
+    .stats-color-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .stats-reset-btn {
+      background: #fee2e2 !important;
+      border: 1px solid #fca5a5 !important;
+      color: #b91c1c !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      min-height: 36px !important;
+      padding: 6px 14px !important;
+      border-radius: 999px !important;
+      cursor: pointer !important;
+    }
+    .stats-reset-btn:hover {
+      background: #fecaca !important;
+    }
+
   </style>
 </head>
 <body>
@@ -2183,6 +2554,10 @@
         <button class="secondary" id="galleryBackHomeBtn">
           <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
           <span>חזרה לבית</span>
+        </button>
+        <button class="color-toggle-btn gallery-color-btn" id="galleryColorToggleBtn" title="החלפת צבע שקף (שחור/לבן)">
+          <span class="color-dot black" id="galleryColorDot"></span>
+          <span id="galleryColorLabel">שחור</span>
         </button>
       </div>
 
@@ -2512,7 +2887,16 @@
 
         <!-- Tab 3: Presets Filtering -->
         <div class="admin-tab-pane" id="paneTabPresets">
-          <p style="color:var(--muted);font-size:13.5px;margin:0 0 12px;">סמנו אילו תבניות מתוך ה-12 יוצגו בגלריה עבור המשתמשים:</p>
+          <div class="presets-toolbar">
+            <div>
+              <p style="color:var(--muted);font-size:13.5px;margin:0 0 6px;">סמנו אילו תבניות מתוך ה-12 יוצגו בגלריה עבור המשתמשים:</p>
+              <span class="presets-count-badge" id="presetsCountBadge">12 מתוך 12 תבניות פעילות</span>
+            </div>
+            <div class="presets-toolbar-actions">
+              <button type="button" class="secondary presets-tool-btn" id="selectAllPresetsBtn">בחר הכל</button>
+              <button type="button" class="secondary presets-tool-btn" id="deselectAllPresetsBtn">בטל הכל</button>
+            </div>
+          </div>
           <div class="presets-toggle-grid" id="presetsToggleGrid"></div>
         </div>
 
@@ -2563,6 +2947,55 @@
             <button type="button" class="secondary" id="adminGoogleConnectBtn" style="gap:8px;margin-top:10px;width:100%;">
               <span>+ חבר חשבון Google של מכשיר זה</span>
             </button>
+          </div>
+        </div>
+
+        <!-- Tab 6: Statistics & Analytics -->
+        <div class="admin-tab-pane" id="paneTabStats">
+          <div class="stats-header-bar">
+            <div>
+              <h3 style="margin:0;font-size:18px;font-weight:800;color:var(--ink);">מדדי שימוש וסדנה</h3>
+              <p style="margin:4px 0 0 0;font-size:13px;color:var(--muted);" id="statsLastActiveLabel">פעילות אחרונה: טוען...</p>
+            </div>
+            <button type="button" class="stats-reset-btn" id="resetStatsBtn">איפוס נתונים לסדנה חדשה 🔄</button>
+          </div>
+
+          <div class="stats-kpi-grid">
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-icon">📸</div>
+              <div class="stats-kpi-value" id="kpiTotalPhotos">0</div>
+              <div class="stats-kpi-label">צילומים שבוצעו</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-icon">🎨</div>
+              <div class="stats-kpi-value" id="kpiTotalCustom">0</div>
+              <div class="stats-kpi-label">שקפים אישיים</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-icon">✍️</div>
+              <div class="stats-kpi-value" id="kpiTotalReflections">0</div>
+              <div class="stats-kpi-label">רפלקציות שנכתבו</div>
+            </div>
+            <div class="stats-kpi-card">
+              <div class="stats-kpi-icon">💾</div>
+              <div class="stats-kpi-value" id="kpiTotalSaves">0</div>
+              <div class="stats-kpi-label">שמירות ושיתופים</div>
+            </div>
+          </div>
+
+          <div class="stats-section-title">🏆 מדד פופולריות תבניות (Leaderboard)</div>
+          <div class="stats-leaderboard" id="statsLeaderboardContainer"></div>
+
+          <div class="stats-section-title">🌓 העדפת צבע שקף (שחור מול לבן)</div>
+          <div class="stats-color-bar-wrap">
+            <div class="stats-color-bar">
+              <div class="stats-color-black" id="statsColorBlackBar" style="width:50%;"></div>
+              <div class="stats-color-white" id="statsColorWhiteBar" style="width:50%;"></div>
+            </div>
+            <div class="stats-color-labels">
+              <span id="statsColorBlackLabel">שחור: 50%</span>
+              <span id="statsColorWhiteLabel">לבן: 50%</span>
+            </div>
           </div>
         </div>
 
@@ -2681,6 +3114,10 @@
       <button class="admin-tab" data-tab="tabPrompts">
         <span>הנחיות</span>
         <svg class="tab-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+      </button>
+      <button class="admin-tab" data-tab="tabStats">
+        <span>סטטיסטיקה</span>
+        <svg class="tab-icon" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"></path></svg>
       </button>
       <button class="admin-tab" data-tab="tabSecurity">
         <span>אבטחה</span>
@@ -3192,6 +3629,17 @@
       }
     }
     topColorToggleBtn.addEventListener('click', toggleMaskColor);
+
+    const galleryColorToggleBtn = document.getElementById('galleryColorToggleBtn');
+    const galleryColorDot = document.getElementById('galleryColorDot');
+    const galleryColorLabel = document.getElementById('galleryColorLabel');
+    if (galleryColorToggleBtn) {
+      galleryColorToggleBtn.addEventListener('click', () => {
+        toggleMaskColor();
+        renderMaskGrid();
+      });
+    }
+
     document.getElementById('cameraColorToggleBtn').addEventListener('click', toggleMaskColor);
 
     // --- Zoom & Position Controls ---
@@ -4051,6 +4499,7 @@
         imageBlob = blob;
         imageFile = new File([blob], `shekef-photo-${Date.now()}.png`, { type: 'image/png' });
         document.getElementById('resultImage').src = URL.createObjectURL(blob);
+        recordAnalyticsEvent('capture', { maskId: selectedMask ? selectedMask.id : 'unknown', color: maskColor });
         navigateTo('result');
       }, 'image/png');
     }
@@ -4583,6 +5032,179 @@
       });
     });
 
+    
+    // --- Analytics & Statistics Tracking ---
+    const STORAGE_KEY_STATS = 'phototherapy_mask_stats_v1';
+    const DEFAULT_STATS = {
+      totalPhotos: 0,
+      totalSaves: 0,
+      totalShares: 0,
+      totalReflections: 0,
+      totalCustomMasks: 0,
+      presetUsage: {},
+      colorUsage: { black: 0, white: 0 },
+      lastActive: Date.now()
+    };
+
+    let appStats = { ...DEFAULT_STATS };
+
+    function loadLocalStats() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY_STATS);
+        return raw ? { ...DEFAULT_STATS, ...JSON.parse(raw) } : { ...DEFAULT_STATS };
+      } catch(e) {
+        return { ...DEFAULT_STATS };
+      }
+    }
+
+    function saveLocalStats(s) {
+      try {
+        localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(s));
+      } catch(e) {}
+    }
+
+    window.handleCloudStatsUpdate = function(cloudStats) {
+      if (!cloudStats || typeof cloudStats !== 'object') return;
+      appStats = { ...DEFAULT_STATS, ...cloudStats };
+      saveLocalStats(appStats);
+      if (currentScreen === 'admin') {
+        renderAdminStats();
+      }
+    };
+
+    function setupStatsSyncSubscription() {
+      if (!window.appCloudSync || !window.appCloudSync.subscribeStats) return;
+      if (window._statsSubscribed) return;
+      window._statsSubscribed = true;
+
+      window.appCloudSync.subscribeStats((cloudData) => {
+        if (cloudData && typeof cloudData === 'object') {
+          window.handleCloudStatsUpdate(cloudData);
+        }
+      });
+    }
+
+    window.addEventListener('cloud-sync-ready', setupStatsSyncSubscription);
+
+    function recordAnalyticsEvent(type, data = {}) {
+      appStats = loadLocalStats();
+      if (type === 'capture') {
+        appStats.totalPhotos = (appStats.totalPhotos || 0) + 1;
+        const maskId = data.maskId || (selectedMask && selectedMask.id) || 'unknown';
+        appStats.presetUsage = appStats.presetUsage || {};
+        appStats.presetUsage[maskId] = (appStats.presetUsage[maskId] || 0) + 1;
+        appStats.colorUsage = appStats.colorUsage || { black: 0, white: 0 };
+        const col = data.color || maskColor || 'black';
+        appStats.colorUsage[col] = (appStats.colorUsage[col] || 0) + 1;
+      } else if (type === 'save') {
+        appStats.totalSaves = (appStats.totalSaves || 0) + 1;
+        if (data.hasReflection) {
+          appStats.totalReflections = (appStats.totalReflections || 0) + 1;
+        }
+      } else if (type === 'share') {
+        appStats.totalShares = (appStats.totalShares || 0) + 1;
+      } else if (type === 'customMask') {
+        appStats.totalCustomMasks = (appStats.totalCustomMasks || 0) + 1;
+      }
+      appStats.lastActive = Date.now();
+      saveLocalStats(appStats);
+
+      if (window.appCloudSync && window.appCloudSync.saveStats) {
+        window.appCloudSync.saveStats(appStats).catch(() => {});
+      }
+      if (currentScreen === 'admin') {
+        renderAdminStats();
+      }
+    }
+
+    function renderAdminStats() {
+      appStats = loadLocalStats();
+      const elPhotos = document.getElementById('kpiTotalPhotos');
+      const elCustom = document.getElementById('kpiTotalCustom');
+      const elReflect = document.getElementById('kpiTotalReflections');
+      const elSaves = document.getElementById('kpiTotalSaves');
+      const elLast = document.getElementById('statsLastActiveLabel');
+
+      if (elPhotos) elPhotos.textContent = appStats.totalPhotos || 0;
+      if (elCustom) elCustom.textContent = appStats.totalCustomMasks || 0;
+      if (elReflect) elReflect.textContent = appStats.totalReflections || 0;
+      if (elSaves) elSaves.textContent = (appStats.totalSaves || 0) + (appStats.totalShares || 0);
+
+      if (elLast) {
+        if (appStats.lastActive) {
+          const d = new Date(appStats.lastActive);
+          elLast.textContent = 'פעילות אחרונה: ' + d.toLocaleDateString('he-IL') + ' ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        } else {
+          elLast.textContent = 'אין פעילות שנרשמה עדיין';
+        }
+      }
+
+      // Leaderboard
+      const container = document.getElementById('statsLeaderboardContainer');
+      if (container) {
+        container.innerHTML = '';
+        const usage = appStats.presetUsage || {};
+        const total = appStats.totalPhotos || 0;
+
+        // Sort all presets by usage
+        const sorted = [...masks].sort((a, b) => (usage[b.id] || 0) - (usage[a.id] || 0));
+        sorted.forEach(mask => {
+          const count = usage[mask.id] || 0;
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+
+          const item = document.createElement('div');
+          item.className = 'stats-leader-item';
+          item.innerHTML = `
+            <div class="stats-leader-thumb">
+              <canvas width="32" height="40"></canvas>
+            </div>
+            <div class="stats-leader-info">
+              <div class="stats-leader-top">
+                <span>${mask.name}</span>
+                <span>${count} צילומים (${pct}%)</span>
+              </div>
+              <div class="stats-progress-track">
+                <div class="stats-progress-fill" style="width:${pct}%;"></div>
+              </div>
+            </div>
+          `;
+          const cvs = item.querySelector('canvas');
+          const ctx = cvs.getContext('2d');
+          drawMask(ctx, 32, 40, mask, 1);
+          container.appendChild(item);
+        });
+      }
+
+      // Color Breakdown
+      const colUsage = appStats.colorUsage || { black: 0, white: 0 };
+      const totalCol = (colUsage.black || 0) + (colUsage.white || 0);
+      const bPct = totalCol > 0 ? Math.round((colUsage.black / totalCol) * 100) : 50;
+      const wPct = 100 - bPct;
+
+      const bBar = document.getElementById('statsColorBlackBar');
+      const wBar = document.getElementById('statsColorWhiteBar');
+      const bLbl = document.getElementById('statsColorBlackLabel');
+      const wLbl = document.getElementById('statsColorWhiteLabel');
+      if (bBar) bBar.style.width = bPct + '%';
+      if (wBar) wBar.style.width = wPct + '%';
+      if (bLbl) bLbl.textContent = 'שחור: ' + bPct + '% (' + (colUsage.black || 0) + ')';
+      if (wLbl) wLbl.textContent = 'לבן: ' + wPct + '% (' + (colUsage.white || 0) + ')';
+    }
+
+    const resetStatsBtn = document.getElementById('resetStatsBtn');
+    if (resetStatsBtn) {
+      resetStatsBtn.addEventListener('click', async () => {
+        if (!confirm('האם לאפס את כל נתוני הסטטיסטיקה? מומלץ לבצע זאת לפני פתיחת סדנה חדשה.')) return;
+        appStats = { ...DEFAULT_STATS, lastActive: Date.now() };
+        saveLocalStats(appStats);
+        if (window.appCloudSync && window.appCloudSync.saveStats) {
+          await window.appCloudSync.saveStats(appStats);
+        }
+        renderAdminStats();
+        showToast('נתוני הסטטיסטיקה אופסו בהצלחה!');
+      });
+    }
+
     function renderAdminDashboard() {
       toggleAdminSidebar(false);
       // 1. Access & Workshop mode
@@ -4622,6 +5244,7 @@
 
       // 5. Google Accounts List
       renderAdminGoogleAccountsList();
+      renderAdminStats();
 
       const isConnected = !!(window.appCloudSync && window.appCloudSync.isFirestoreConnected);
       updateCloudSyncBadge(isConnected);
@@ -4678,20 +5301,67 @@
       });
     }
 
+    function updatePresetsCountBadge() {
+      const badge = document.getElementById('presetsCountBadge');
+      if (!badge) return;
+      const total = masks.length;
+      const checked = document.querySelectorAll('#presetsToggleGrid input[type="checkbox"]:checked').length;
+      badge.textContent = checked + ' מתוך ' + total + ' תבניות פעילות';
+    }
+
     function renderAdminPresetsList() {
       const container = document.getElementById('presetsToggleGrid');
       if (!container) return;
       container.innerHTML = '';
       const disabled = appConfig.disabledPresets || [];
+
       masks.forEach(mask => {
         const isChecked = !disabled.includes(mask.id);
-        const label = document.createElement('label');
-        label.className = 'preset-toggle-item';
-        label.innerHTML = `
-          <input type="checkbox" data-preset-id="${mask.id}" ${isChecked ? 'checked' : ''} />
-          <span>${mask.name}</span>
+        const card = document.createElement('label');
+        card.className = 'preset-admin-card' + (isChecked ? ' active' : '');
+        card.innerHTML = `
+          <div class="preset-admin-thumb-wrap">
+            <canvas width="44" height="55" class="preset-admin-canvas"></canvas>
+          </div>
+          <div class="preset-admin-info">
+            <strong>${mask.name}</strong>
+            <span class="preset-admin-state">${isChecked ? 'פעיל בגלריה' : 'מוסתר'}</span>
+          </div>
+          <input type="checkbox" class="preset-admin-checkbox" data-preset-id="${mask.id}" ${isChecked ? 'checked' : ''} />
         `;
-        container.appendChild(label);
+        const canvas = card.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+        drawMask(ctx, 44, 55, mask, 1);
+
+        const cb = card.querySelector('input');
+        cb.addEventListener('change', () => {
+          card.classList.toggle('active', cb.checked);
+          card.querySelector('.preset-admin-state').textContent = cb.checked ? 'פעיל בגלריה' : 'מוסתר';
+          updatePresetsCountBadge();
+        });
+
+        container.appendChild(card);
+      });
+      updatePresetsCountBadge();
+    }
+
+    const selectAllPresetsBtn = document.getElementById('selectAllPresetsBtn');
+    if (selectAllPresetsBtn) {
+      selectAllPresetsBtn.addEventListener('click', () => {
+        document.querySelectorAll('#presetsToggleGrid input[type="checkbox"]').forEach(cb => {
+          cb.checked = true;
+          cb.dispatchEvent(new Event('change'));
+        });
+      });
+    }
+
+    const deselectAllPresetsBtn = document.getElementById('deselectAllPresetsBtn');
+    if (deselectAllPresetsBtn) {
+      deselectAllPresetsBtn.addEventListener('click', () => {
+        document.querySelectorAll('#presetsToggleGrid input[type="checkbox"]').forEach(cb => {
+          cb.checked = false;
+          cb.dispatchEvent(new Event('change'));
+        });
       });
     }
 
@@ -4949,6 +5619,8 @@
 
       // 2. Subscribe to Cloud Sync (Firestore)
       setupCloudSyncSubscription();
+      setupStatsSyncSubscription();
+      appStats = loadLocalStats();
 
       // 3. Apply active config to DOM
       applyAppConfig(appConfig);
